@@ -14,12 +14,6 @@ import igraph
 TAB = " " * 4
 
 
-# TODO:
-#   • do we need to include OP id in discussants set?
-#       • if so, need to refactor
-#           • matrix fn
-
-
 def main():
     """Top-level access point for gathering social metrics data."""
     in_json_path = get_cli_args()
@@ -37,60 +31,57 @@ def create_adjacency_matrix(issue_dict: dict) -> list:
     :return: adjacency matrix
     :rtype: list of lists of integers
     """
-    cmmnt_dict = issue_dict["issue_comments"]
 
-    # get unique discussants set. This only counts the number of
-    # commenters and does not include the original poster. We
-    # must add one to the number of discussants to count the
-    # poster.
-    discussant_set = get_unique_discussants(cmmnt_dict)
-    num_discussants = len(discussant_set) + 1
-    node_list = []
+    def print_adj_mat(matrix: list) -> None:
+        i = 0
+        for row in matrix:
+            print(f"{i}: {row}")
+            i += 1
 
-    # init node list by adding node for original poster.
-    # The conversation starts with the person who originally posted
-    # the issue.
-    creator_id = issue_dict["userid"]
+        print("\n")
 
-    # if the original poster is also in the set of comment
-    # discussants, we want to make sure that we do not take
-    # any more info from that person. We consequently remove
-    # them from the set and decrement the length of the set.
-    if creator_id in discussant_set:
-        discussant_set.remove(creator_id)
-        num_discussants -= 1
+    discussant_list = get_discussants_list(issue_dict)
+    uniq_discussant_list = get_unique_discussants(issue_dict)
 
-    # append row in adjacency matrix for creator.
-    # This person will have no edges connecting them to commenters
-    # so we give them 0's for the number of discussants.
-    node_list.append([0] * num_discussants)
+    num_uniq_rows = len(uniq_discussant_list)
 
-    # if there are no discussants in the API object, i.e. no one
-    # commented on an issue or PR, then return the list as is,
-    # with just the original poster.
-    if num_discussants > 0:
-        for _, cmmnt in cmmnt_dict.items():
+    # init empty adjacency matrix
+    adj_mat = [[0] * num_uniq_rows for _ in range(num_uniq_rows)]
 
-            discussant = cmmnt["discussant"]["userid"]
+    # require that each node connects to all prior nodes.
+    # minimum density will be 50% in graphs with more than
+    # 1 vertex.
+    for i in range(num_uniq_rows):
+        for j in range(i):
+            adj_mat[i][j] = 1
 
-            if discussant in discussant_set:
-                discussant_set.remove(discussant)
+    # iterate over all unique userid's
+    for i in range(num_uniq_rows):
+        key_id = uniq_discussant_list[i]
 
-                # append 1's for each prior node. The 1's indicate that
-                # this node will connect to the node at the index of the
-                # 1, e.g. if there are five total nodes, the nodes that
-                # come after the first will all connect to the first, so
-                # the first index in each node list will have a one. All
-                # adjacency matrices should appear the same, with a format
-                # like
-                #
-                # [0, 0, 0]
-                # [1, 0, 0]
-                # [1, 1, 0]
-                node = [1] * len(node_list) + [0] * (num_discussants - len(node_list))
-                node_list.append(node)
+        # create list of all instances in discussant list of current id
+        instance_list = [k for k, x in enumerate(discussant_list) if x == key_id]
+        print(f"{i}: {key_id}-{instance_list}")
 
-    return node_list
+        j = 0
+
+        # loop over discussant_list up to last appearance of key id
+        while j < instance_list[-1]:
+            cur_id = discussant_list[j]
+
+            if key_id != cur_id:
+                cur_id_matrix_index = uniq_discussant_list.index(cur_id)
+
+                # in the adjacency matrix row belonging to the current
+                # id, set all ids in the indices before the last instance
+                # of the current id to one
+                adj_mat[i][cur_id_matrix_index] = 1
+
+            j += 1
+
+    print_adj_mat(adj_mat)
+
+    return adj_mat
 
 
 def get_cli_args() -> str:
@@ -114,6 +105,26 @@ def get_cli_args() -> str:
     return arg_parser.parse_args().extractor_data_path
 
 
+def get_discussants_list(issue_dict: dict) -> list[str]:
+    """
+    TODO.
+
+    :param issue_dict:
+    :type issue_dict: dict
+    :return: list of discussants in issue, including original poster
+    :rtype: list
+    """
+    id_list = [issue_dict["userid"]]
+
+    id_list += [
+        comment["discussant"]["userid"]
+        for comment in issue_dict["issue_comments"].values()
+        if isinstance(comment["discussant"]["userid"], str)
+    ]
+
+    return id_list
+
+
 def get_graph_plot(adj_graph, discussant_list: list, path: str):
     """
     TODO.
@@ -123,7 +134,7 @@ def get_graph_plot(adj_graph, discussant_list: list, path: str):
     :param discussant_list:
     :type discussant_list: list
     """
-    settings = dict(layout="fruchterman_reingold", vertex_label=discussant_list)
+    settings = dict(layout="kamada_kawai", vertex_label=discussant_list)
 
     igraph.plot(adj_graph, f"{path}.pdf", **settings)
 
@@ -170,26 +181,14 @@ def get_unique_discussants(issue_dict: dict) -> list:
     :return:
     :rtype:
     """
-    print(issue_dict)
-    id_list = [issue_dict["userid"]]
+    discussant_list = get_discussants_list(issue_dict)
 
-    issuecmmnt_dict = issue_dict["issue_comments"]
+    discussants_set = list(dict.fromkeys(discussant_list))
 
-    if len(issuecmmnt_dict) > 0:
-        id_list += [
-            comment["discussant"]["userid"]
-            for comment in issuecmmnt_dict.values()
-            if isinstance(comment["discussant"]["userid"], str)
-        ]
-
-        discussants_set = list(dict.fromkeys(id_list))
-
-        return discussants_set
-
-    return id_list
+    return discussants_set
 
 
-def print_graph_data(key: str, adj_mat: list, discussants_set: list) -> None:
+def print_graph_data(key: str, graph, adj_mat: list, discussants_set: list) -> None:
     """
     Print graph data. Used for debugging.
 
@@ -200,16 +199,31 @@ def print_graph_data(key: str, adj_mat: list, discussants_set: list) -> None:
     :param discussants_list: list of discussants
     :type discussants_list: list
     """
+    index = 0
+
     print(f"{key}:")
     print(f"{TAB}discussants:")
     for discussant in discussants_set:
-        print(f"{TAB * 2}{discussant}")
+        print(f"{TAB * 2}{index}: {discussant}")
+        index += 1
 
+    index = 0
+    print()
     print(f"{TAB}matrix:")
     for adj_list in adj_mat:
-        print(f"{TAB * 2}{adj_list}")
+        print(f"{TAB * 2}{index}: {adj_list}")
+        index += 1
 
     print()
+    print(f"{TAB}graph data:")
+    print(f"{TAB * 2}diameter    : {graph.diameter()}")
+    print(f"{TAB * 2}edges       : {graph.ecount()}")
+    print(f"{TAB * 2}vertices    : {graph.vcount()}")
+    print(f"{TAB * 2}density     : {graph.density()}")
+    print(f"{TAB * 2}betweenness : {graph.betweenness()}")
+    print(f"{TAB * 2}closeness   : {graph.closeness()}")
+
+    print("\n")
 
 
 def produce_graph_obj(adj_mat: list):
@@ -236,18 +250,21 @@ def produce_issue_dict_graphs(issue_dict: dict):
     # for each issue in the issue dictionary
     for key, val in issue_dict.items():
         # create list of discussants
-        discussant_set = get_unique_discussants(val)
+        # discussant_set = get_unique_discussants(val)
 
         # create matrix
         adj_mat = create_adjacency_matrix(val)
 
-        print_graph_data(key, adj_mat, discussant_set)
-
         # create graph object
         # graph = produce_graph_obj(adj_mat)
 
-        # # plot graph
-        # get_graph_plot(graph, discussant_set, f"graphs/{key}")
+        # print_graph_data(key, graph, adj_mat, discussant_set)
+
+        # plot graph
+        # print(f"{TAB}Plotting issue #{key}", end="\r")
+        # get_graph_plot(graph, discussant_set, f"data/output/graphs/{key}")
+
+    print()
 
 
 def read_file_into_text(in_path: str) -> str:
