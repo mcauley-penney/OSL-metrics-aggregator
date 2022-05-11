@@ -32,6 +32,67 @@ def create_adjacency_matrix(issue_dict: dict) -> list:
     :rtype: list of lists of integers
     """
 
+    def mark_recurring_id_instances(
+        adj_mat: list[list[int]],
+        id_list: list[str],
+        uniq_id_list: list[str],
+        num_uniq_ids: int,
+    ) -> list[list[int]]:
+        """
+        Update an adjacency matrix with edges between recurring and prior users.
+
+        In the conversation in a GitHub issue, a commenter
+        (which includes the original poster) might comment
+        again. We would like to create edges between this
+        users and the users they are responding to.
+
+        An example of this might be a conversation with ID's
+        appearing in the order 1,2,3,4,1. Without and without
+        marking the recurring ID, we have the matrices:
+
+            0,0,0,0     0,1,1,1
+            1,0,0,0     1,0,0,0
+            1,1,0,0     1,1,0,0
+            1,1,1,0     1,1,1,0
+
+        We desire the second format.
+
+        :param adj_mat: adjacency matrix to update
+        :type adj_mat: list[list[int]]
+        :param id_list: list of IDs, including duplicates, in the order
+            they appear in the conversation
+        :type id_list: list[str]
+        :param uniq_id_list: list of IDs, without duplicates. Essentially
+            a set
+        :type uniq_id_list: list[str]
+        :param num_uniq_ids: number of unique IDs in the list of unique IDs
+        :type num_uniq_ids: int
+        :return: updated adjacency matrix
+        :rtype: list[list[int]]
+        """
+        for i in range(num_uniq_ids):
+            key_id = uniq_id_list[i]
+
+            # create list of all instances in discussant list of current id
+            instance_list = [k for k, x in enumerate(id_list) if x == key_id]
+            j = 0
+
+            # loop over discussant_list up to last appearance of key id
+            while j < instance_list[-1]:
+                cur_id = id_list[j]
+
+                if key_id != cur_id:
+                    cur_id_matrix_index = uniq_id_list.index(cur_id)
+
+                    # in the adjacency matrix row belonging to the current
+                    # id, set all ids in the indices before the last instance
+                    # of the current id to one
+                    adj_mat[i][cur_id_matrix_index] = 1
+
+                j += 1
+
+        return adj_mat
+
     def print_adj_mat(matrix: list) -> None:
         i = 0
         for row in matrix:
@@ -40,46 +101,24 @@ def create_adjacency_matrix(issue_dict: dict) -> list:
 
         print("\n")
 
-    discussant_list = get_discussants_list(issue_dict)
-    uniq_discussant_list = get_unique_discussants(issue_dict)
+    id_list = get_discussants_list(issue_dict)
+    uniq_id_list = get_unique_discussants(issue_dict)
 
-    num_uniq_rows = len(uniq_discussant_list)
+    num_uniq_ids = len(uniq_id_list)
 
-    # init empty adjacency matrix
-    adj_mat = [[0] * num_uniq_rows for _ in range(num_uniq_rows)]
+    # init empty adjacency matrix.
+    # NOTE: avoid creating references to existing object!
+    # https://docs.python.org/3/faq/programming.html#how-do-i-create-a-multidimensional-list
+    adj_mat = [[0] * num_uniq_ids for _ in range(num_uniq_ids)]
 
     # require that each node connects to all prior nodes.
     # minimum density will be 50% in graphs with more than
     # 1 vertex.
-    for i in range(num_uniq_rows):
+    for i in range(num_uniq_ids):
         for j in range(i):
             adj_mat[i][j] = 1
 
-    # iterate over all unique userid's
-    for i in range(num_uniq_rows):
-        key_id = uniq_discussant_list[i]
-
-        # create list of all instances in discussant list of current id
-        instance_list = [k for k, x in enumerate(discussant_list) if x == key_id]
-        print(f"{i}: {key_id}-{instance_list}")
-
-        j = 0
-
-        # loop over discussant_list up to last appearance of key id
-        while j < instance_list[-1]:
-            cur_id = discussant_list[j]
-
-            if key_id != cur_id:
-                cur_id_matrix_index = uniq_discussant_list.index(cur_id)
-
-                # in the adjacency matrix row belonging to the current
-                # id, set all ids in the indices before the last instance
-                # of the current id to one
-                adj_mat[i][cur_id_matrix_index] = 1
-
-            j += 1
-
-    print_adj_mat(adj_mat)
+    adj_mat = mark_recurring_id_instances(adj_mat, id_list, uniq_id_list, num_uniq_ids)
 
     return adj_mat
 
@@ -250,19 +289,19 @@ def produce_issue_dict_graphs(issue_dict: dict):
     # for each issue in the issue dictionary
     for key, val in issue_dict.items():
         # create list of discussants
-        # discussant_set = get_unique_discussants(val)
+        discussant_set = get_unique_discussants(val)
 
         # create matrix
         adj_mat = create_adjacency_matrix(val)
 
         # create graph object
-        # graph = produce_graph_obj(adj_mat)
+        graph = produce_graph_obj(adj_mat)
 
-        # print_graph_data(key, graph, adj_mat, discussant_set)
+        print_graph_data(key, graph, adj_mat, discussant_set)
 
         # plot graph
-        # print(f"{TAB}Plotting issue #{key}", end="\r")
-        # get_graph_plot(graph, discussant_set, f"data/output/graphs/{key}")
+        print(f"{TAB}Plotting issue #{key}", end="\r", file=sys.stderr)
+        get_graph_plot(graph, discussant_set, f"data/output/graphs/{key}")
 
     print()
 
