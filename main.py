@@ -8,6 +8,7 @@ iGraph docs:
 import argparse
 import json
 from json.decoder import JSONDecodeError
+import os
 import sys
 import igraph
 
@@ -19,7 +20,14 @@ def main():
     in_json_path = get_cli_args()
     issues_dict = read_jsonfile_into_dict(in_json_path)
 
-    produce_issue_dict_graphs(issues_dict)
+    out_dict = produce_issue_metrics_dict(issues_dict)
+
+    # get out file name
+    issue_filename = in_json_path.rsplit("/", 1)[1]
+    out_filename = issue_filename.rsplit(".", 1)[0]
+    out_path = mk_json_outpath("./data/output", out_filename, "_metrics")
+
+    write_dict_to_jsonfile(out_dict, out_path)
 
 
 def create_adjacency_matrix(issue_dict: dict) -> list:
@@ -92,14 +100,6 @@ def create_adjacency_matrix(issue_dict: dict) -> list:
                 j += 1
 
         return adj_mat
-
-    def print_adj_mat(matrix: list) -> None:
-        i = 0
-        for row in matrix:
-            print(f"{i}: {row}")
-            i += 1
-
-        print("\n")
 
     id_list = get_discussants_list(issue_dict)
     uniq_id_list = get_unique_discussants(issue_dict)
@@ -178,7 +178,7 @@ def get_graph_plot(adj_graph, discussant_list: list, path: str):
     igraph.plot(adj_graph, f"{path}.pdf", **settings)
 
 
-def get_issue_wordiness(issuecmmnt_dict: dict):
+def get_issue_wordiness(issue_dict: dict) -> int:
     """
     Count the amount of words over a length of 2 in each comment in an issue.
 
@@ -187,7 +187,19 @@ def get_issue_wordiness(issuecmmnt_dict: dict):
     """
     sum_wc = 0
 
-    for comment in issuecmmnt_dict.values():
+    try:
+        sum_wc += len(
+            [
+                word
+                for word in issue_dict["body"].split()
+                if len(word) > 2 and word != "Nan"
+            ]
+        )
+
+    except KeyError:
+        pass
+
+    for comment in issue_dict["issue_comments"].values():
         body = comment["body"]
 
         # get all words greater in len than 2
@@ -198,7 +210,7 @@ def get_issue_wordiness(issuecmmnt_dict: dict):
     return sum_wc
 
 
-def get_num_uniq_discussants(issuecmmnt_dict: dict):
+def get_num_uniq_discussants(issue_dict: dict):
     """
     TODO.
 
@@ -207,7 +219,7 @@ def get_num_uniq_discussants(issuecmmnt_dict: dict):
     :return:
     :rtype:
     """
-    return len(get_unique_discussants(issuecmmnt_dict))
+    return len(get_unique_discussants(issue_dict))
 
 
 def get_unique_discussants(issue_dict: dict) -> list:
@@ -227,42 +239,64 @@ def get_unique_discussants(issue_dict: dict) -> list:
     return discussants_set
 
 
-def print_graph_data(key: str, graph, adj_mat: list, discussants_set: list) -> None:
+def merge_dicts(base: dict, to_merge: dict | None) -> dict:
     """
-    Print graph data. Used for debugging.
+    Merge two dictionaries.
 
-    :param key: key of issue
-    :type key: str
-    :param adj_mat: matrix for discussant relations
-    :type adj_mat: list
-    :param discussants_list: list of discussants
-    :type discussants_list: list
+    NOTES:
+        • syntax in 3.9 or greater is "base |= to_merge"
+            • pipe is the "merge" operator, can be used in
+              augmented assignment
+
+    :param base: dict to merge into
+    :type base: dict
+    :param to_merge: dict to dissolve into base dict
+    :type to_merge: dict
+    :return: base dict
+    :rtype: dict
     """
-    index = 0
+    # sometimes getters return empty dictionaries. we want to merge if they
+    # arent empty
+    if to_merge:
+        return {**base, **to_merge}
 
-    print(f"{key}:")
-    print(f"{TAB}discussants:")
-    for discussant in discussants_set:
-        print(f"{TAB * 2}{index}: {discussant}")
-        index += 1
+    return base
 
-    index = 0
-    print()
-    print(f"{TAB}matrix:")
-    for adj_list in adj_mat:
-        print(f"{TAB * 2}{index}: {adj_list}")
-        index += 1
 
-    print()
-    print(f"{TAB}graph data:")
-    print(f"{TAB * 2}diameter    : {graph.diameter()}")
-    print(f"{TAB * 2}edges       : {graph.ecount()}")
-    print(f"{TAB * 2}vertices    : {graph.vcount()}")
-    print(f"{TAB * 2}density     : {graph.density()}")
-    print(f"{TAB * 2}betweenness : {graph.betweenness()}")
-    print(f"{TAB * 2}closeness   : {graph.closeness()}")
+def mk_json_outpath(out_dir: str, repo_title: str, output_type: str) -> str:
+    """
+    Create path to JSON file to write output data to.
 
-    print("\n")
+    We cannot know if the user will always prepare output paths
+    for us, so we must protect our operations by ensuring path
+    existence
+
+    :param out_dir: dir to init output file in
+    :type out_dir: str
+    :param repo_title: the name of the repo, e.g. "bar" in "foo/bar"
+    :type repo_title: str
+    :param output_type: Type of output being created
+    :type output_type: str
+    :return: path to output file
+    :rtype: str
+    """
+    path = f"{out_dir}/{repo_title}_{output_type}.json"
+
+    # ensures that path exists, no exception handling required
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    # Using open() instead of mknode() allows this program to be portable;
+    # mknode appears to be *nix specific. We can use "x" mode to ensure that
+    # the open call is used exclusively for creating the file. If the file
+    # exists, though, "x" mode raises a FileExistsError, which we must ignore.
+    try:
+        with open(path, "x", encoding="UTF-8") as fptr:
+            fptr.close()
+
+    except FileExistsError:
+        pass
+
+    return path
 
 
 def produce_graph_obj(adj_mat: list):
@@ -279,31 +313,45 @@ def produce_graph_obj(adj_mat: list):
     return adj_graph
 
 
-def produce_issue_dict_graphs(issue_dict: dict):
+def produce_issue_metrics_dict(issue_dict: dict) -> dict:
     """
     TODO.
 
     :param issue_dict:
     :type issue_dict: dict
     """
+    data_dict = {}
+
     # for each issue in the issue dictionary
     for key, val in issue_dict.items():
-        # create list of discussants
-        discussant_set = get_unique_discussants(val)
-
         # create matrix
         adj_mat = create_adjacency_matrix(val)
 
         # create graph object
         graph = produce_graph_obj(adj_mat)
 
-        print_graph_data(key, graph, adj_mat, discussant_set)
+        cur_dict = {
+            "betweenness": graph.betweenness(),
+            "closeness": graph.closeness(),
+            "density": graph.density(),
+            "diameter": graph.diameter(),
+            "edges": graph.ecount(),
+            "num_discussants": get_num_uniq_discussants(val),
+            "vertices": graph.vcount(),
+            "wordiness": get_issue_wordiness(val),
+        }
+
+        print(cur_dict)
+
+        cur_dict = {key: cur_dict}
+
+        data_dict = merge_dicts(data_dict, cur_dict)
 
         # plot graph
-        print(f"{TAB}Plotting issue #{key}", end="\r", file=sys.stderr)
-        get_graph_plot(graph, discussant_set, f"data/output/graphs/{key}")
+        # print(f"{TAB}Plotting issue #{key}", end="\r", file=sys.stderr)
+        # get_graph_plot(graph, discussant_set, f"data/output/graphs/{key}")
 
-    print()
+    return data_dict
 
 
 def read_file_into_text(in_path: str) -> str:
@@ -368,6 +416,26 @@ def read_jsontext_into_dict(json_text: str) -> dict:
 
     else:
         return json_dict
+
+
+def write_dict_to_jsonfile(out_dict: dict, out_path: str) -> None:
+    """
+    Write given Python dictionary to output file as JSON.
+
+    :raises FileNotFoundError: no file found at given path
+
+    :param out_dict: dictionary to write as JSON
+    :type out_dict: dict
+    :param out_path: path to write output to
+    :type out_path: str
+    """
+    try:
+        with open(out_path, "w", encoding="UTF-8") as json_outfile:
+            json.dump(out_dict, json_outfile, ensure_ascii=False, indent=4)
+
+    except FileNotFoundError:
+        print(f"\nFile at {out_path} not found!")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
