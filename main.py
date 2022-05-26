@@ -20,14 +20,41 @@ def main():
     in_json_path = get_cli_args()
     issues_dict = read_jsonfile_into_dict(in_json_path)
 
-    out_dict = produce_issue_metrics_dict(issues_dict)
+    get_all_core_contributor_lists(input_dict)
+
+    # out_dict: dict = produce_issue_metrics_dict(issues_dict)
 
     # get out file name
     issue_filename = in_json_path.rsplit("/", 1)[1]
     out_filename = issue_filename.rsplit(".", 1)[0]
     out_path = mk_json_outpath("./data/output", out_filename, "_metrics")
 
-    write_dict_to_jsonfile(out_dict, out_path)
+    # write_dict_to_jsonfile(out_dict, out_path)
+
+
+def get_all_core_contributor_lists(input_dict: dict):
+    """
+    TODO.
+
+    Args:
+        input_dict (dict):
+    """
+    # TODO:
+    # 1. determine return type
+    # -----------------------------------------------------------------
+    commit_data_dict = input_dict["by_commit"]
+
+    for start_dt_key in commit_data_dict.keys():
+        for end_dt_subkey in commit_data_dict[start_dt_key].keys():
+            contrib_dict = commit_data_dict[start_dt_key][end_dt_subkey]
+
+            core_contrib_list = get_core_contributor_list(contrib_dict)
+
+            print(f"{start_dt_key} to {end_dt_subkey}:")
+            for name, commits in core_contrib_list:
+                print(f"    {name}: {commits}")
+
+            print()
 
 
 def create_adjacency_matrix(issue_dict: dict) -> list:
@@ -142,6 +169,84 @@ def get_cli_args() -> str:
     )
 
     return arg_parser.parse_args().extractor_data_path
+
+
+def get_core_contributor_list(commit_dict: dict):
+    """
+    Create a list of the core contributors of the given repository.
+
+    Implements the Coelho et al. custom "Commit-Based Heuristic"
+    algorithm: "the core team are those who produce 80% of the
+    overall amount of commits in a project. However, as usually
+    defined, this heuristic accepts developers with few
+    contributions, regarding the total number of commits. For
+    this reason, we customized the heuristic after some initial
+    experiments to require core developers to have at least 5%
+    of the total number of commits; candidates who have fewer
+    commits are excluded."
+
+    Citations:
+        Coelho J, Valente MT, Silva LL, Hora A (2018) Why we engage in floss:
+        Answers from core developers. In: Proceedings of the 11th International
+        Workshop on Cooperative and Human Aspects of Software Engineering, pp
+        114–121
+
+        link: https://arxiv.org/pdf/1803.05741.pdf
+    """
+
+    def create_core_list(contrib_dict: dict) -> list:
+        """
+        TODO.
+
+        Args:
+            commit_dict (dict):
+
+        Returns:
+            list: unfiltered list of core contributors
+        """
+        contrib_list: list = list(contrib_dict["contributions"].items())
+        core_thresh: int = math.floor(contrib_dict["num_commits"] * 0.8)
+
+        contrib_sum: int = 0
+        i: int = 0
+        out_list: list = []
+
+        while i < len(contrib_list) and contrib_sum < core_thresh:
+            cur_entry = contrib_list[i]
+            contrib_sum += cur_entry[1]
+            out_list.append(cur_entry)
+            i += 1
+
+        return out_list
+
+    def rm_invalid_contributors(core_list: list) -> list:
+        """
+        TODO.
+
+        Args:
+            core_list (list):
+
+        Returns:
+            list: list of core contributors with invalid contributors removed.
+        """
+        prohib_list: list = ["dependabot", "github actions"]
+
+        for core_entry in core_list:
+            for prohib_name in prohib_list:
+                if prohib_name in core_entry[0]:
+                    core_list.remove(core_entry)
+
+        return core_list
+
+    raw_core_list = create_core_list(commit_dict)
+
+    filtered_core = [
+        entry for entry in raw_core_list if entry[1] > commit_dict["num_commits"] * 0.05
+    ]
+
+    core_list = rm_invalid_contributors(filtered_core)
+
+    return core_list
 
 
 def get_discussants_list(issue_dict: dict) -> list[str]:
