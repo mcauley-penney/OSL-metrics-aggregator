@@ -7,23 +7,39 @@ import math
 def find_core_contribs_per_issue(input_data: dict):
     """TODO."""
 
-    def find_commit_period_key(cur_issue_date: str, interval_timestrs: list) -> str:
-        def str_to_datetime(time_str: str) -> datetime.datetime:
+    def find_issue_core_contribs(
+        cur_issue, core_per_timeframe: dict, timeframe_keys: list
+    ):
+        def find_commit_period_key(cur_issue_date: str, interval_timestrs: list) -> str:
+            def str_to_datetime(time_str: str) -> datetime.datetime:
 
-            return datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ")
+                return datetime.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ")
 
-        i: int = 0
+            i: int = 0
 
-        # Format is "03/12/14, 11:38:01 AM
-        cur_issue_datetime: datetime.datetime = datetime.datetime.strptime(
-            cur_issue_date, "%m/%d/%y, %I:%M:%S %p"
+            # Format is "03/12/14, 11:38:01 AM
+            cur_issue_datetime: datetime.datetime = datetime.datetime.strptime(
+                cur_issue_date, "%m/%d/%y, %I:%M:%S %p"
+            )
+
+            # TODO: use binary search?
+            while cur_issue_datetime > str_to_datetime(interval_timestrs[i]):
+                i += 1
+
+            return contrib_interval_start_timestrs[i - 1]
+
+        issue_bucket_key: str = find_commit_period_key(
+            cur_issue["date"], timeframe_keys
         )
 
-        # TODO: use binary search?
-        while cur_issue_datetime > str_to_datetime(interval_timestrs[i]):
-            i += 1
+        issue_period_core_contribs: dict = core_per_timeframe[issue_bucket_key]
 
-        return contrib_interval_start_timestrs[i - 1]
+        # get list of contribs in issue who are in period dict too
+        return [
+            dev
+            for dev in cur_issue["contributors"]
+            if dev in issue_period_core_contribs
+        ]
 
     commit_input: dict = input_data["by_commit"]
     issue_input: dict = input_data["by_issue"]
@@ -36,18 +52,10 @@ def find_core_contribs_per_issue(input_data: dict):
 
     for _, issue in contribs_per_issue.items():
 
-        issue_bucket_key = find_commit_period_key(
-            issue["date"], contrib_interval_start_timestrs
-        )
-
-        issue_period_core_contribs: dict = core_contribs_per_timeframe[issue_bucket_key]
-
         # get list of contribs in issue who are in period dict too
-        issue_contribs: set = issue["contributors"]
-
-        issue_core_contribs = [
-            dev for dev in issue_contribs if dev in issue_period_core_contribs
-        ]
+        issue_core_contribs = find_issue_core_contribs(
+            issue, core_contribs_per_timeframe, contrib_interval_start_timestrs
+        )
 
         # TODO: package this up and return it
         print(issue_core_contribs)
@@ -192,18 +200,36 @@ def _get_core_contributor_dict(commit_dict: dict) -> dict:
 
         return out_list
 
-    def rm_invalid_contributors(core_list: list) -> list:
+    def has_minimum_commit_quant(dev_commits, total_commits):
         """
-        TODO.
+        Check if a developer passes a commit percentage threshhold.
+
+        The number of commits made by a developer must be at least 5%
+        of total commits, whether for a time period or the entire repo
+        history.
 
         Args:
-            core_list (list):
+            dev_commits (int): number of commits made by a developer.
+            total_commits (int): total number of commits to check against.
+
+        Returns:
+            bool: true if a developer has at least 5% of total commits.
+        """
+        return dev_commits > total_commits * 0.05
+
+    def rm_invalid_contribs_by_name(core_list: list) -> list:
+        """
+        Remove bots from list of core developers.
+
+        Args:
+            core_list (list): list of core developers to filter.
 
         Returns:
             list: list of core contributors with invalid contributors removed.
         """
         prohib_list: list = ["dependabot", "github actions"]
 
+        # TODO: could be cleaned up. This is messy.
         for core_entry in core_list:
             for prohib_name in prohib_list:
                 if prohib_name in core_entry[0]:
@@ -213,13 +239,12 @@ def _get_core_contributor_dict(commit_dict: dict) -> dict:
 
     raw_core_contribs = create_core_list(commit_dict)
 
-    # TODO: create predicate fn for checking 5% val
     filtered_core_contribs = [
-        entry
-        for entry in raw_core_contribs
-        if entry[1] > commit_dict["num_commits"] * 0.05
+        dev_entry
+        for dev_entry in raw_core_contribs
+        if has_minimum_commit_quant(dev_entry[1], commit_dict["num_commits"])
     ]
 
-    core_devs: list = rm_invalid_contributors(filtered_core_contribs)
+    core_devs: list = rm_invalid_contribs_by_name(filtered_core_contribs)
 
     return dict(core_devs)

@@ -6,8 +6,8 @@ iGraph docs:
 
 """
 import argparse
-from metrics_aggregator import contributors, communicators
-from metrics_aggregator.utils import file_io_utils as file_io
+from src.metrics_aggregator import contributors, communicators
+from src.metrics_aggregator.utils import file_io_utils as file_io
 
 TAB = " " * 4
 
@@ -21,7 +21,11 @@ def main():
     in_json_path: str = get_cli_args()
     input_dict: dict = file_io.read_jsonfile_into_dict(in_json_path)
 
-    contributors.find_core_contribs_per_issue(input_dict)
+    issue_data: dict = input_dict["by_issue"]
+
+    communicators.alt_aggregate(issue_data)
+    # communicators.aggregate_issue_social_metrics(issue_data)
+    # contributors.find_core_contribs_per_issue(input_dict)
 
     # out_dict: dict = produce_issue_metrics_dict(issues_dict)
 
