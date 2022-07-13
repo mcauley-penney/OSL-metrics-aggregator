@@ -1,22 +1,26 @@
 {
+  "description": {
+    "Tests": [
+      "1. adding multiple issues where the original poster and at least one of the commenters are the same, e.g. userid 1 posts two issues and, in each, userid 2 responds."
+    ],
+    "Outcomes": [
+      "1. a weight corresponding to the amount of responses between the duplicate commenter and duplicate poster is added to the edge from the commenter to the poster. For the example given in the correspond test above, there must be only two rows and a weight of two for the edge from the commenter to the poster (row 1, column 0)."
+    ]
+  },
   "by_issue": {
-    "1": {
+    "0": {
       "userid": "1",
-      "comments": {}
-    },
-    "2": {
-      "userid": "2",
       "comments": {
         "0": {
-          "userid": "3"
+          "userid": "2"
         }
       }
     },
-    "3": {
-      "userid": "2",
+    "1": {
+      "userid": "1",
       "comments": {
         "0": {
-          "userid": "3"
+          "userid": "2"
         }
       }
     }
@@ -24,16 +28,9 @@
   "matrix": [
     [
       0,
-      0,
       0
     ],
     [
-      0,
-      0,
-      0
-    ],
-    [
-      0,
       2,
       0
     ]
