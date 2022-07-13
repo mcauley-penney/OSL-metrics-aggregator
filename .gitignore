@@ -1,5 +1,1 @@
-*.json
-data/input
-data/output/dicts.txt
-data/output/graphs
-data/output/test_data.txt
+data/metrics

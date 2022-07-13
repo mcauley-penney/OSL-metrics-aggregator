@@ -1,0 +1,265 @@
+{
+    "by_issue": {
+        "1": {
+            "userid": "18598712",
+            "closed_at": "05/05/19, 09:22:54 PM",
+            "comments": {}
+        },
+        "2": {
+            "userid": "30301021",
+            "closed_at": "05/09/19, 03:53:16 PM",
+            "comments": {
+                "0": {
+                    "body": "Merged. Thank you for your contribution!",
+                    "userid": "26118718"
+                }
+            }
+        },
+        "3": {
+            "userid": "8421414",
+            "closed_at": "07/14/20, 10:35:34 AM",
+            "comments": {
+                "0": {
+                    "body": "It'd be a bit of a stretch but something like [i3wm](https://i3wm.org/) would be neat",
+                    "userid": "5257450"
+                },
+                "1": {
+                    "body": "I came here to say, \"i3 for Windows!\" and was very pleased to find I had been beaten to it.",
+                    "userid": "4878259"
+                },
+                "2": {
+                    "body": "If I could add on to this, I would ask that it also remembers across virtual desktops. I often open up a virtual desktop for each project I'm currently working on & setup specific layouts per desktop.",
+                    "userid": "2480667"
+                },
+                "3": {
+                    "body": "Just another solution out is: [AquaSnap](https://www.nurgo-software.com/products/aquasnap)I want this so badly especially as a feature I could potentially deploy throughout a company.",
+                    "userid": "23745835"
+                },
+                "4": {
+                    "body": "On Linux, I commonly used i3, but it always had a view quirks simply because some applications don't play nice with tiling window managers.For Windows I currently use [GridMove](https://www.dcmembers.com/jgpaiva/) with a custom grid that lets me quickly reorganize windows on my ultrawide screen using the num-pad. See [this video](https://www.youtube.com/watch?v=3iN8Ohi_nVg) for a short demonstration.",
+                    "userid": "328798"
+                },
+                "5": {
+                    "body": "On Linux I used xmonad a bunch.On Windows I feel like maximized and semi-maximized states are nearly perfect, but would love more tiling window manager options/approaches/support such as defaulting new windows (when possible) to those states. I feel like I get really close with Tablet Mode (I leave it on almost all the time on one machine), but of course it pains me that I can't turn on Tablet Mode as soon as another monitor is attached.",
+                    "userid": "129777"
+                },
+                "6": {
+                    "body": "Please microsoft, something like [i3](https://i3wm.org/)If you don't bother with it, give us API.WM api and publlic all of the Virtual Desktop API..Right now, the virtual desktop api is not useful.For example, I can't list  all virtual desktop or create a new virtual desktop programmatically. (hidden api?).There is tilling wm in Windows like AquaSnap.But it use mouse heavily.Something like fully keyboard driven would be awesome..Target visible windows from mouse is easy, filter visible windows without user selecting something kinda challenge.....Not only that, DWM (windows compositor) in Windows add an extra gap between window.Attempt to tiles window with its own size require a hacks (subtract gap value with window size).I kinda make wm with win32 api, i3wm inspired but right now is feels like bspwm.[MyWinTiles](https://github.com/CSaratakij/MyWinTiles),Also have its own bar [MyWinBar](https://github.com/CSaratakij/MyWinBar).For tiling, I just call win32 api tiles functional :((which will have a gaps when tiles)For virtual desktop, I just track HWND and minimize, restore..But the point is, It's a full keyboard driven (hooray~).There is a problem with UWP apps I haven't fixed yet..And not support multi monitor at the moment..Try this out, might convince you guys to implement a full window manager with layouts and full keyboard driven wm. :)",
+                    "userid": "9628627"
+                },
+                "7": {
+                    "body": "+1 followed by infinite zeros for a 'real' tiling window manager like i3wm. [bug.n](https://github.com/fuhsjr00/bug.n) is hacky AutoHotKey script and is amazing for what it is but if this sort of functionality were native to Windows it would be awesome.",
+                    "userid": "197930"
+                },
+                "8": {
+                    "body": "Coming from the macOS side of the house, I would love features that are in https://magnet.crowdcafe.com. Primarily, I'd be looking for things like splitting the layouts into thirds with the ability to use 1/3 and/or 2/3 of the screen. Additionally, keyboard shortcuts to snap to these layouts should be considered.",
+                    "userid": "1134568"
+                },
+                "9": {
+                    "body": "Hi, thank you for the suggestion. This issues looks like it's about enhancement requests for the \"Full window manager including specific layouts for docking and undocking laptops\", which first issue is https://github.com/microsoft/PowerToys/issues/4 .",
+                    "userid": "26118718"
+                },
+                "10": {
+                    "body": "An issue specific for a tiling Window Manager was created in https://github.com/microsoft/PowerToys/issues/37Discussion about this specific form of window management should be had there.",
+                    "userid": "26118718"
+                },
+                "11": {
+                    "body": "Closing this in favor of https://github.com/microsoft/PowerToys/issues/4",
+                    "userid": "3206696"
+                }
+            }
+        },
+        "6": {
+            "userid": "192942",
+            "closed_at": "05/19/20, 09:58:53 PM",
+            "comments": {
+                "0": {
+                    "body": "Would love to see something that allows one to view and possibly alter the system hotkey table.  This has been sorely missing from Windows for its whole history, so would be really helpful!",
+                    "userid": "2551899"
+                },
+                "1": {
+                    "body": "I subscribed to GitHub just to to say it would be wonderful",
+                    "userid": "50415623"
+                },
+                "2": {
+                    "body": "Massive extra points for some pre-loaded shortcut \"themes,\" like maybe a vim theme and an Emacs theme.",
+                    "userid": "916340"
+                },
+                "3": {
+                    "body": "throw in autotype:ctrl+shift+u => types that long url you have to use all the time",
+                    "userid": "13918530"
+                },
+                "4": {
+                    "body": "If this is not added, you can try AutoHotKey and get many of the requested features",
+                    "userid": "50466615"
+                },
+                "5": {
+                    "body": "> Bonus points if you can tell me who registered which hotkeys, so I can find and kill OneNote when it clobbers the PrtScn button...This might be impossible to get perfect since a process sometimes hooks `WH_KEYBOARD_LL` to get all key inputs, and triggers actions based on whatever it wants. But just being able to see all the processes which have used `RegisterHotKey` would be phenomenal.",
+                    "userid": "4093170"
+                },
+                "6": {
+                    "body": "You want [The Wonderful Icon](https://github.com/microsoft/PowerToys/issues/76)",
+                    "userid": "1389841"
+                },
+                "7": {
+                    "body": "> > > If this is not added, you can try AutoHotKey and get many of the requested featuresTrue, but why should we rely on a third party app when MS should be providing this sort of basic functionality.",
+                    "userid": "33688532"
+                },
+                "8": {
+                    "body": "+1",
+                    "userid": "34165628"
+                },
+                "9": {
+                    "body": "for keyboard shortcuts to be useful in Power Toys, Microsoft would have to allow users to remap shortcuts that Windows tools take over, like putting Shift-Win-S back to OneNote, but Windows blocks those reassignments, even in the registry.",
+                    "userid": "38077532"
+                },
+                "10": {
+                    "body": "I want to remap Ctrl+C -> Win+C to use easy use my mac keyboard.",
+                    "userid": "927432"
+                },
+                "11": {
+                    "body": "+1",
+                    "userid": "1482343"
+                },
+                "12": {
+                    "body": "Also really great would be to export/import custom keymaps to share between devices.",
+                    "userid": "40199275"
+                },
+                "13": {
+                    "body": "> Also really great would be to export/import custom keymaps to share between devices.I like it.Like a JSON file which can be synced via cloud.",
+                    "userid": "13918530"
+                },
+                "14": {
+                    "body": "+1",
+                    "userid": "1360878"
+                },
+                "15": {
+                    "body": "Wow, I just came in here thinking that it would be just me wanting that. Of course, I was thinking of something very specific, but hey, who am I to argue with an even better idea?For the record, I wanted a PowerToy giving users the ability to remap the \"change keyboard language\" shortcut, which only accepts CTRL+SHIFT, ALT+LEFT_SHIFT, [GRAVE ACCENT `] or nothing!For us people who type a lot and between languages, the ability to set one single dedicated key would be God-sent.Of course, even more functionality would be even better.",
+                    "userid": "1195307"
+                },
+                "16": {
+                    "body": "Pressing and holding \"Windows\" should show the available shortcuts of the current active application. E.g. OneNote is active I can see all shortcuts available in OneNote. When switchting to Chrome I should see all Chrome-shortcuts while holding \"Windows\"",
+                    "userid": "4168179"
+                },
+                "17": {
+                    "body": "If you will add the option to remap ALL the keyboard softwarely, to the system (not as an addon like ahk, that if an app with high hierarchy crashes, the custom-keystrokes stuck) permanently, that will be Great!",
+                    "userid": "44523436"
+                },
+                "18": {
+                    "body": "adding in shortcut guide as well here as the two PowerToys work together.",
+                    "userid": "1462282"
+                },
+                "19": {
+                    "body": "SharpKeys is one tool on Windows that does this (https://github.com/randyrants/sharpkeys) and was crucial for when running bootcamp to get your laptop keyboard to run like a Windows Keyboard for remapping.Mac has a similar tool, https://github.com/pqrs-org/Karabiner-Elements that was important for the same reason when using a Windows style keyboard and having it map like a Mac keyboard.There are tons of use cases past these two.- a nice to have requirement here would be to have changes instantly be reflected without a restart- movable to different computers- per-keyboard ability to map (when you have a laptop and a full keyboard, happens when you bootcamp a mac and use a microsoft keyboard for instance)Other applications that do this- https://www.autohotkey.com/  - https://manytricks.com/keycodes/ <-- Not really a keyboard manager, but an interesting trick, maybe this is part of F12?Other general ideas- Make sure to rationalize all the shortcuts in PowerToys itself- Make sure any Windows key related shortcuts that are changed show up on the Windows Key Shortcut Guide (#179)- Support the idea of profiles that people can generate and share    - Make a Mac to Windows shortcut profile to make it easier for Mac folks to land on Windows- Create a marketplace of the top profiles- Allow others to submit profiles to the marketplace",
+                    "userid": "1462282"
+                },
+                "20": {
+                    "body": "the hardest thing for keyboard remappers is to know what keys are present on the keyboard and to present the keys that can be remapped to. Even with SharpKeys it can be hard to know which key you are remapping when it's not a key that's on every keyboard, and getting a canonical list of keys with helpful descriptions would be useful. (eg right Alt and Alt Gr are not always the same, the right mouse/Windows context key has a completely inexplicable name)remapping keyboard shortcuts on Windows currently requires registry access and so is blocked on Windows S; any options for changing that?",
+                    "userid": "38077532"
+                },
+                "21": {
+                    "body": "> remapping keyboard shortcuts on Windows currently requires registry access and so is blocked on Windows S; any options for changing that?we have ideas :)",
+                    "userid": "1462282"
+                },
+                "22": {
+                    "body": "> the hardest thing for keyboard remappers is to know what keys are present on the keyboard and to present the keys that can be remapped to. Even with SharpKeys it can be hard to know which key you are remapping when it's not a key that's on every keyboard, and getting a canonical list of keys with helpful descriptions would be useful. (eg right Alt and Alt Gr are not always the same, the right mouse/Windows context key has a completely inexplicable name)For those wondering, AltGR -> https://en.wikipedia.org/wiki/AltGr_key  Most would still reference this as Right side alt :)  Another common scenarios are a Surface Laptop 2 does not have a right ctrl but a Surface Ergo keyboard does have a right ctrl",
+                    "userid": "1462282"
+                },
+                "23": {
+                    "body": "> Bonus points if you can tell me who registered which hotkeys, so I can find and kill OneNote when it clobbers the PrtScn button...> What I'm looking for is a tool that picks up shortcut key assignments in Windows shortcut files. I have one particular app that recreates it's default desktop shortcut every time I update it. The problem is it uses a shortcut combo I use constantly in Word. But since the shortcut is a Windows \"system\" shortcut I keep launching the stupid app. I don't even see it all the time because it opens in the background.  So I have to remember to remove the keyboard shortcut from the newly recreated desktop shortcut. But I don't always remember..So if the PowerToy can pick it up, showing 'ALL' shortcuts honored by Windows, where they are defined. If the tool can reach out and directly change the shortcuts too, that would be even better. But by simply pointing me to the right place it would save a huge amount of time, and hair pulling.",
+                    "userid": "33688532"
+                },
+                "24": {
+                    "body": "Hey friends, we just want to make sure everyone saw that we have a PM Spec for the feature.  #1112 is the pull request.  Please add in any comments there for consideration.  @saahmedm did a ton of great work here and we want to be sure we're prioritizing the correct things and not missing anything.",
+                    "userid": "1462282"
+                },
+                "25": {
+                    "body": "> For those wondering, AltGR -> https://en.wikipedia.org/wiki/AltGr_key  Most would still reference this as Right side alt :)E0_2038and context key is E0_5Dand I have to keep a screenshot of these in my 'new PC setup list' to copy from every time!",
+                    "userid": "38077532"
+                },
+                "26": {
+                    "body": "> > For those wondering, AltGR -> https://en.wikipedia.org/wiki/AltGr_key  Most would still reference this as Right side alt :)> > E0_2038> > and context key is E0_5D> > and I have to keep a screenshot of these in my 'new PC setup list' to copy from every time!thanks for the messages, not sure we're clear on the AltGr feedback however! the team (@crutkas) is going to contact @marypcbuk and better understand scenario directly",
+                    "userid": "58789616"
+                },
+                "27": {
+                    "body": "This looks awesome! While the spec contain a lot of good features, I would like to include a few ideas of my own to the mix, for your consideration:### Tapable KeysAssign tapping actions to keys. We can potentially allow for _cadet style_ typing this way, which is something I'd wanted natively for years. Right now I need to use custom firmwares with custom keyboards. But it is not always an option, so it would be most welcome. _And since the spec already mentions app-specific shortcuts, these would be great to use in text-editors._ **Examples:**1. Assign single tap to L/R shift, so as to type `[` and `]` and double tap them for `{` and `}`. And maybe tapping on L/R Ctrl for `(` and `)`.2. _Tap-dancing_ to perform a macro when a key has been tapped a set amount of times. (Just like Sticky Keys work with 5xShift today).This can also provide a way to assign leader keys (much like how Fn works today, but with a OneShot style behaviour.**Examples:**1. Set Print Screen as OneShot, and then pressing 1, 2 or 3 for screenshot Window, Screen or Defined area, respectively.2. OneShot Fn key to open a temporary layer _(more below)_. where you can assign new commands to the entire keyboard. Perfect for those hard to remember ALT-000 code symbols. ### Key layersAssign key layers that can be reached by using a specified mod key + number row would greatly improve workflows and give almost an endless amount of hotkeys to those out there who currently use several keyboards to achieve this. Is this doable?",
+                    "userid": "5272077"
+                },
+                "28": {
+                    "body": "@swoy good idea, i doubt that would be in a v1.  Once we have a better base for the remapper, happy to have community contributions for it.",
+                    "userid": "1462282"
+                },
+                "29": {
+                    "body": "For the [Linux profile](https://github.com/microsoft/PowerToys/pull/1112/files#diff-37635d849b9bfd8e52eba38bae55d900R145), I would propose the following shortcuts for WSL and desktop Linux users. This list is _not exhaustive_, it is merely a starting point for the types of shortcuts that could be included.These shortcuts are influenced by the [GNOME desktop environment](https://www.gnome.org/) and [bash shell](https://www.gnu.org/software/bash/). GNOME at the moment the default Linux desktop on the most popular Linux distributions so it makes a logical starting point.I would propose that eventually users be able to create, share, and load their own keyboard shortcut profiles. This way users could create profiles for the shortcuts used by KDE Plasma, MATE, and i3.**Linux                       Windows****Workspace Management**Super+[PgUp/Down]     =      Win+Ctrl+[Left/Right]Note: Linux does not create or delete workspaces.**Window Management**Ctrl+Alt+D     =             Win+MSuper+H        =             Win+[Down]**Desktop**Super+M      =              Win+APrtScn           =          Win+Shift+S**Accessibility**Super+Alt+8      =           Win+PlusSuper+Alt+Plus  =            Win+PlusSuper+Alt+Minus   =          Win+MinusSuper+Alt+A     =            Win+Ctrl+Enter**Terminal**Ctrl+A         =             HomeCtrl+E          =            EndAlt+B           =            Ctrl+LeftCtrl+F          =           Ctrl+RightCtrl+P = UpCtrl+N = Down**Miscellaneous**Alt+F2        =             Win+RShift+Ctrl+C       =         Ctrl+CShift+Ctrl+V       =        Ctrl+VCtrl+_ = Ctrl +Z**Already Similar**Win/Super+[Left/Right]Win/Super+Shift+[Left/Right]Alt+TabWin/SuperWin/Super+LCtrl+CF11[Gnome Keyboard Shortcuts](https://help.gnome.org/users/gnome-help/stable/keyboard-shortcuts-set.html.en)[KDE Keyboard Shortcuts](https://docs.kde.org/trunk5/en/applications/fundamentals/kbd.html)[i3 Keyboard Shortcuts](https://i3wm.org/docs/refcard.html)",
+                    "userid": "33820650"
+                },
+                "30": {
+                    "body": "@sirredbeard great work and thank you for all the links! this is a v valuable starting point",
+                    "userid": "58789616"
+                },
+                "31": {
+                    "body": "for tracking, here is the spec. https://github.com/microsoft/PowerToys/wiki/Keyboard-Manager",
+                    "userid": "1462282"
+                },
+                "32": {
+                    "body": "quick update y'all! we have a preliminary design, in gif form, that we'd love for you to check out: [here](https://github.com/microsoft/PowerToys/wiki/Keyboard-Manager#below-is-a-perliminary-gif-of-the-app-this-is-being-changed-frequently-and-is-simply-a-show-of-the-basic-functionality-we-hope-for-our-v1 )",
+                    "userid": "58789616"
+                },
+                "33": {
+                    "body": "quick suggestion: the GIF would be easier to comment on if it was broken up into separate GIFs for the different steps/features it's showing. I kept getting lost on when it was still the same feature and when it was a new one. love the visual representation of the keys though!",
+                    "userid": "38077532"
+                },
+                "34": {
+                    "body": "> quick suggestion: the GIF would be easier to comment on if it was broken up into separate GIFs for the different steps/features it's showing. I kept getting lost on when it was still the same feature and when it was a new one. love the visual representation of the keys though!this is a great suggestion, I've added smaller gifs at each step, if you scroll lower to the specific sections! thanks mary 👍",
+                    "userid": "58789616"
+                },
+                "35": {
+                    "body": "@saahmedm Great spec!I was wondering, can't we simplify the 'key remap' / 'shortcut remap' inputscreens by using a simple dialog? The spec shows the user would press a button on the settings page to move to a new screen.I'd like to propose a dialog that allows the user to enter the original key and updated key out of the editable ComboBox. Saving it would add it to the keystrokes ListView. Remapped buttons can be deleted there. Clicking on a ListView item would open the same dialog with the correct values pre-selected. This would reduce complexity and an additional navigation step for the end user. (For the shortcut remapping we can use something similar for consistency).Here's some working XAML to illustrate:![KeyboardRemappingdialog](https://user-images.githubusercontent.com/9866362/78992738-47bc5300-7b3c-11ea-8f30-aaab0f132fd5.gif)Thoughts?",
+                    "userid": "9866362"
+                },
+                "36": {
+                    "body": "@niels9001.  i think in the future that could be do-able but due to how things were developed, it had to be a separate app like FZ Editor.",
+                    "userid": "1462282"
+                },
+                "37": {
+                    "body": "Can't wait for this to hit the shelf!One thing that struck me, those list views in Main UI seems kind of wasteful with the available space. Wouldn't it be better to compact the list items a bit? This could be subjective, but I find it hard to get an overview when I have to scroll a lot to see what i've added as key substitutes. In my mind, each of those list items could be half the height they currently have.",
+                    "userid": "5272077"
+                },
+                "38": {
+                    "body": "Quick question: does anybody know if the back-tab button is implemented or even _implementable_ on Windows? Of course, back-tab would be the same functionality as pressing Shift-Tab but I'd like to know if I can design a custom keyboard (which I am) with a back-tab button right next to the plain tab and actually have it work. Of course, that could/would have to do with the Keyboard Shortcut Manager, as it would also have to support not only the \"regular\" keys which are found on a normal keyboard, but literally **everything**, including all the media buttons, special buttons like \"Mail\" key, \"Calculator\" key, \"My Computer\" key and also F13-F24, Power, Sleep, Eject, etc.",
+                    "userid": "1195307"
+                },
+                "39": {
+                    "body": "@skagon for our v1 we won't be able to map shortcuts (shift-tab) to single keys. We are looking into this for later versions however. also, we will support special keys like mail, calculator, F13-F24 etc. Keys like Power, Eject, Sleep though are not considered virtual keys and wouldn't be supported in our v1.if we did have support for shortcut-to-key mapping in our v2/v3, you would be able to map shift-tab to any key, creating a \"back-tab\" button.",
+                    "userid": "58789616"
+                },
+                "40": {
+                    "body": "@saahmedm So, the v1 of the Keyboard Manager would only do what can be done through the registry? As in, literally remap one key to another and only that?",
+                    "userid": "1195307"
+                },
+                "41": {
+                    "body": "@skagon no! our v1 would be able to the following, briefly: - map key-to-key (through the registry)- map key-to-key (in-process, not touching registry / no requirement to reboot) *- map shortcut-to-shortcut for the OS (So changing Ctrl-Z to Ctrl-A) *- map shortcut-to-shortcut for specific apps as well (changing Ctrl-Shift-N in Edge to Ctrl-N) *_*these work only when PT is running_ for detailed information [here is the spec](https://github.com/microsoft/PowerToys/wiki/Keyboard-Manager#2-requirements)",
+                    "userid": "58789616"
+                },
+                "42": {
+                    "body": "hi everyone! 0.18 is LIVE!!!! 🎉👀 here is our *beta* keyboard manager ✔. Keep in mind, this is not the finished product and we only have basic functionality here and will be adding more (app specific shortcuts, profiles, etc) for our V1 release.  Thanks everyone for their input to get this far, we'll be asking for more feedback as you use this version to help us deliver an even better experience!!https://github.com/microsoft/PowerToys/releases",
+                    "userid": "58789616"
+                },
+                "43": {
+                    "body": "I'd love to see a global hotkey manager for Windows 11 Developer Preview, in PowerToys. The existing \"Keyboard Manager\" feature in PowerToys 0.59.0 doesn't really do what I'd expect. It only remaps keys and simple shortcuts.See for example this utility: https://www.nirsoft.net/utils/hot_keys_list.html",
+                    "userid": "466713"
+                }
+            }
+        },
+        "9": {
+            "userid": "50206",
+            "closed_at": "05/09/19, 03:57:30 PM",
+            "comments": {
+                "0": {
+                    "body": "Merged. Thank you for the contribution!",
+                    "userid": "26118718"
+                }
+            }
+        }
+    }
+}

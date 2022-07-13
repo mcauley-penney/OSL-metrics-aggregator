@@ -6,14 +6,10 @@ iGraph docs:
 
 """
 import argparse
-from src.metrics_aggregator import contributors, communicators
+from src.metrics_aggregator import communicators as comm
 from src.metrics_aggregator.utils import file_io_utils as file_io
 
 TAB = " " * 4
-
-
-# TODO:
-# 1. attempt to create API abstraction layer
 
 
 def main():
@@ -23,18 +19,16 @@ def main():
 
     issue_data: dict = input_dict["by_issue"]
 
-    communicators.alt_aggregate(issue_data)
-    # communicators.aggregate_issue_social_metrics(issue_data)
-    # contributors.find_core_contribs_per_issue(input_dict)
-
-    # out_dict: dict = produce_issue_metrics_dict(issues_dict)
+    metrics: dict = comm.gather_all_issues_comm_metrics(issue_data)
 
     # get out file name
-    # issue_filename: str = in_json_path.rsplit("/", 1)[1]
-    # out_filename: str = issue_filename.rsplit(".", 1)[0]
-    # out_path: str = mk_json_outpath("./data/output", out_filename, "_metrics")
+    issue_filename: str = in_json_path.rsplit("/", 1)[1]
+    out_filename: str = issue_filename.rsplit(".", 1)[0]
+    out_path: str = file_io.mk_json_outpath(
+        "./data/output", out_filename, "_metrics"
+    )
 
-    # write_dict_to_jsonfile(out_dict, out_path)
+    file_io.write_dict_to_jsonfile(metrics, out_path)
 
 
 def get_cli_args() -> str:
