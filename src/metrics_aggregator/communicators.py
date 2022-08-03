@@ -1,14 +1,12 @@
 """Tools for gathering metrics about the communicators in a repo's issues."""
 
-# TODO:
-# 1. update docstrings
-#   - include info on what each function needs from the input data to operate
-#       - eg making the graphs needs issue comments, issue bodies, etc.
-#           - document ALL items
-
 import datetime
 import igraph
+import networkx
+from src.metrics_aggregator import hierarchy
 
+
+CLR = "\x1b[K"
 TAB = " " * 4
 
 
@@ -33,111 +31,37 @@ def gather_all_issues_comm_metrics(issue_data: dict) -> dict:
         dict: {period str: dict of metrics from graph of "conversation" for
                 period key}
     """
-    cur_bucket_metrics: dict = {}
+    igraph_metrics: dict = {}
+    networkx_metrics: dict = {}
     total_metrics: dict = {}
+
+    print()
+    print(f"{TAB}Partitioning issues into temporal periods...")
 
     issue_buckets: dict = create_partitioned_issue_dict(issue_data)
 
+    print(f"{TAB}Calculating metrics...")
+
     for period, issue_nums in issue_buckets.items():
-        cur_bucket_graph = make_period_network_matrix(issue_data, issue_nums)
 
-        cur_bucket_metrics = get_graph_metric_dict(cur_bucket_graph)
+        print(f'{CLR}{TAB * 2}Period: "{period}", Issues: {len(issue_nums)}')
 
-        total_metrics[period] = cur_bucket_metrics
+        cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(
+            issue_data, issue_nums
+        )
+        print(f"{TAB * 3}Graph produced...")
+
+        igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
+        print(f"{TAB * 3}iGraph metrics complete...")
+
+        networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
+        print(f"{TAB * 3}NetworkX metrics complete...")
+
+        total_metrics[period] = {**igraph_metrics, **networkx_metrics}
+
+    print(f"\n\n{TAB}Metrics calculation complete!")
 
     return total_metrics
-
-
-def make_issue_network_matrix(
-    cur_issue: dict, cur_graph: igraph.Graph
-) -> igraph.Graph:
-    """
-    Create an adjacency matrix for participants in one issue conversation.
-
-    Notes:
-        This functionality requires:
-            - userid
-            - issue comments
-                - userid
-
-    Args:
-        cur_issue (dict):
-        cur_graph (igraph.Graph):
-
-    Returns:
-        igraph.Graph: graph object update with nodes and edges from the
-        conversation that transpired in the given issue parameter
-    """
-    # TODO: add comment about why we are using this list
-    cur_node_list: list = []
-
-    # idempotently add the original poster of the issue
-    userid: str = cur_issue["userid"]
-
-    try:
-        cur_vertex_obj = cur_graph.vs.find(name=userid)
-
-    except ValueError:
-        cur_vertex_obj = cur_graph.add_vertex(name=userid)
-
-    cur_node_list.append(cur_vertex_obj)
-
-    for _, comment in cur_issue["comments"].items():
-
-        # idempotently add each commenter
-        userid = comment["userid"]
-
-        # add vertices idempotently
-        try:
-            cur_vertex_obj = cur_graph.vs.find(name=userid)
-
-        except ValueError:
-            cur_vertex_obj = cur_graph.add_vertex(name=userid)
-
-        cur_node_list.append(cur_vertex_obj)
-
-        # for each vertex added to the current graph, add an edge
-        # from the current vertex.
-        for added_vertex in cur_node_list:
-            try:
-                cur_graph.es.find(_between=([cur_vertex_obj], [added_vertex]))
-
-            # if there is no edge present, add the edge and init
-            # the weight.
-            except ValueError:
-                # only continue if we the current vertex is
-                # not being compared to itself
-                if cur_vertex_obj["name"] != added_vertex["name"]:
-                    cur_graph.add_edge(cur_vertex_obj, added_vertex)
-                    cur_graph[cur_vertex_obj, added_vertex] = 1
-
-            else:
-                cur_graph[cur_vertex_obj, added_vertex] += 1
-
-    return cur_graph
-
-
-def make_period_network_matrix(
-    issue_data: dict, period_issue_nums: list
-) -> igraph.Graph:
-    """
-    TODO.
-
-    Args:
-        period_num_list ():
-        issue_data (dict):
-
-    Returns:
-        igraph.Graph: graph of social network for period
-    """
-    cur_bucket_graph = igraph.Graph(directed=True)
-
-    for num in period_issue_nums:
-        cur_bucket_graph = make_issue_network_matrix(
-            issue_data[num], cur_bucket_graph
-        )
-
-    return cur_bucket_graph
 
 
 # TODO: could be a lot smarter, I think
@@ -216,7 +140,198 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     return issue_interval_data
 
 
-def get_graph_metric_dict(graph: igraph.Graph) -> dict:
+def make_igraph_period_network_matrix(
+    issue_data: dict, period_issue_nums: list
+) -> igraph.Graph:
+    """
+    TODO.
+
+    Args:
+        period_num_list ():
+        issue_data (dict):
+
+    Returns:
+        igraph.Graph: graph of social network for period
+    """
+    cur_bucket_graph = igraph.Graph(directed=True)
+
+    for num in period_issue_nums:
+        cur_bucket_graph = make_igraph_issue_network_matrix(
+            issue_data[num], cur_bucket_graph
+        )
+
+    return cur_bucket_graph
+
+
+def make_igraph_issue_network_matrix(
+    cur_issue: dict, cur_graph: igraph.Graph
+) -> igraph.Graph:
+    """
+    Create an adjacency matrix for participants in one issue conversation.
+
+    Notes:
+        This functionality requires:
+            - userid
+            - issue comments
+                - userid
+
+    Args:
+        cur_issue (dict):
+        cur_graph (igraph.Graph):
+
+    Returns:
+        igraph.Graph: graph object update with nodes and edges from the
+        conversation that transpired in the given issue parameter
+    """
+    cur_node_list: list = []
+
+    # idempotently add the original poster of the issue
+    userid: str = cur_issue["userid"]
+
+    cur_vertex_obj, cur_graph = idempotent_add(userid, cur_graph)
+    cur_node_list.append(cur_vertex_obj)
+
+    for _, comment in cur_issue["comments"].items():
+
+        # idempotently add each commenter
+        userid = comment["userid"]
+
+        cur_vertex_obj, cur_graph = idempotent_add(userid, cur_graph)
+        cur_node_list.append(cur_vertex_obj)
+
+        # for each vertex added to the current graph, add an edge
+        # from the current vertex.
+        for added_vertex in cur_node_list:
+            try:
+                cur_graph.es.find(_between=([cur_vertex_obj], [added_vertex]))
+
+            # if there is no edge present, add the edge and init
+            # the weight.
+            except ValueError:
+                # only continue if we the current vertex is
+                # not being compared to itself
+                if cur_vertex_obj["name"] != added_vertex["name"]:
+                    cur_graph.add_edge(cur_vertex_obj, added_vertex)
+                    cur_graph[cur_vertex_obj, added_vertex] = 1
+
+            else:
+                cur_graph[cur_vertex_obj, added_vertex] += 1
+
+    return cur_graph
+
+
+def idempotent_add(userid, graph):
+    """
+    TODO: update name, finish docstring.
+
+    Args:
+        userid ():
+        graph ():
+
+    Returns:
+        vertex_obj:
+        graph:
+    """
+    try:
+        vertex_obj = graph.vs.find(name=userid)
+
+    except ValueError:
+        vertex_obj = graph.add_vertex(name=userid)
+
+    return vertex_obj, graph
+
+
+def get_networkx_graph_metrics(ig_graph: igraph.Graph):
+    """
+    Get NetworkX-specific metrics from an iGraph graph.
+
+    Args:
+        graph (igraph.Graph): igraph graph to convert to NetworkX
+    """
+    nx_graph = ig_graph.to_networkx()
+
+    node_constraints: dict = networkx.constraint(nx_graph)
+    node_eff_sz: dict = networkx.effective_size(nx_graph)
+
+    # TODO: return dicts from these functions for
+    # consistency, even though we only need lists?
+    node_efficiencies: list = global_efficiency(nx_graph, node_eff_sz)
+
+    node_hierarchies: list = hierarchy.global_hierarchy(nx_graph)
+
+    return {
+        "constraint": calc_aggregates_from_dict(node_constraints),
+        "effective_size": calc_aggregates_from_dict(node_eff_sz),
+        "efficiency": aggregate_node_metric(node_efficiencies),
+        "hierarchy": aggregate_node_metric(node_hierarchies),
+    }
+
+
+def calc_aggregates_from_dict(node_data: dict):
+    """
+    TODO.
+
+    Args:
+        node_data (dict):
+
+    Returns:
+        dict: aggregate values for list of node values
+
+    """
+    node_vals: list = list(node_data.values())
+
+    return aggregate_node_metric(node_vals)
+
+
+def global_efficiency(graph, esize):
+    """
+    Produce list of efficiencies for all nodes in a network.
+
+    Notes:
+        Implementations:
+            1. [
+                ((sz / degree) if (degree := graph.degree(node)) > 0 else 0)
+                for node, sz in esize.items()
+            ]
+
+            2. [
+                efficiency(graph.degree(node), sz) for node, sz in
+                esize.items()
+            ]
+
+        ":=" operator available in >=Python 3.8
+
+    Args:
+        graph ():
+    """
+    return [efficiency(graph.degree(node), sz) for node, sz in esize.items()]
+
+
+def efficiency(degree: int, effective_size: int):
+    """
+    Get the efficiency between a node and one of it's neighbors.
+
+    JUNG source code found at
+    https://github.com/jrtom/jung/blob/1f579fe5d74ecbaecbe32ce6762e1fa9e17ed225/jung-algorithms/src/main/java/edu/uci/ics/jung/algorithms/metrics/StructuralHoles.java#L88-L104
+
+    NetworkX notes on efficiency found at
+    https://github.com/networkx/networkx/blob/36d446bae7059d9a6b2db742f3b75457f89db032/networkx/algorithms/structuralholes.py#L102-L106
+
+    Args:
+        graph ():
+        node ():
+        neighbor ():
+
+    Returns:
+        double
+    """
+    if degree == 0:
+        return 0
+
+    return effective_size / degree
+
+
+def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
     """
     Get metrics of interest about a social network from the network's graph.
 
@@ -228,13 +343,62 @@ def get_graph_metric_dict(graph: igraph.Graph) -> dict:
         dict: dict of social metrics derived from the input graph.
     """
     return {
-        "betweenness": graph.betweenness(),
-        "closeness": graph.closeness(),
-        "density": graph.density(),
-        "diameter": graph.diameter(),
         "edges": graph.ecount(),
         "vertices": graph.vcount(),
+        "density": graph.density(),
+        "diameter": graph.diameter(),
+        "betweenness": aggregate_node_metric(graph.betweenness()),
+        "closeness": aggregate_node_metric(graph.closeness()),
     }
+
+
+def aggregate_node_metric(node_metrics: list):
+    """
+    Return aggregate values for the given metric.
+
+    Currently used for:
+        betweenness
+        closeness
+        constraint
+        effective_size
+        efficiency
+        hierarchy
+
+    Returns:
+        dict:
+    """
+    aggregates: dict = {}
+
+    aggregates["raw"] = node_metrics
+    aggregates["avg"] = 0
+    aggregates["max"] = 0
+    aggregates["sum"] = sum(node_metrics)
+
+    num_nodes = len(node_metrics)
+
+    if num_nodes > 0:
+        aggregates["max"] = max(node_metrics)
+        aggregates["avg"] = aggregates["sum"] / num_nodes
+
+    return aggregates
+
+
+# NOTE: below this line, all unused right now
+def get_unique_discussants(issue_dict: dict) -> list:
+    """
+    Create set of discussants in a dictionary of comments on an issue.
+
+    TODO:
+    :param issuecmmnt_dict:
+    :type issuecmmnt_dict: dict
+    :return:
+    :rtype:
+    """
+    discussant_list = get_discussants_list(issue_dict)
+
+    discussants_set = list(dict.fromkeys(discussant_list))
+
+    return discussants_set
 
 
 def get_discussants_list(issue_dict: dict) -> list[str]:
@@ -283,7 +447,7 @@ def get_issue_wordiness(issue_dict: dict) -> int:
             [
                 word
                 for word in issue_dict["body"].split()
-                if len(word) > 2 and word != "Nan"
+                if len(word) > 2 and word.lower() != "nan"
             ]
         )
 
@@ -300,20 +464,3 @@ def get_issue_wordiness(issue_dict: dict) -> int:
         sum_wc += len(split_body)
 
     return sum_wc
-
-
-def get_unique_discussants(issue_dict: dict) -> list:
-    """
-    Create set of discussants in a dictionary of comments on an issue.
-
-    TODO:
-    :param issuecmmnt_dict:
-    :type issuecmmnt_dict: dict
-    :return:
-    :rtype:
-    """
-    discussant_list = get_discussants_list(issue_dict)
-
-    discussants_set = list(dict.fromkeys(discussant_list))
-
-    return discussants_set

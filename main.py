@@ -15,9 +15,7 @@ TAB = " " * 4
 def main():
     """Top-level access point for gathering social metrics data."""
     in_json_path: str = get_cli_args()
-    input_dict: dict = file_io.read_jsonfile_into_dict(in_json_path)
-
-    issue_data: dict = input_dict["by_issue"]
+    issue_data: dict = file_io.read_jsonfile_into_dict(in_json_path)
 
     metrics: dict = comm.gather_all_issues_comm_metrics(issue_data)
 
@@ -25,7 +23,7 @@ def main():
     issue_filename: str = in_json_path.rsplit("/", 1)[1]
     out_filename: str = issue_filename.rsplit(".", 1)[0]
     out_path: str = file_io.mk_json_outpath(
-        "./data/output", out_filename, "_metrics"
+        "./data/metrics/output/", out_filename, "_metrics"
     )
 
     file_io.write_dict_to_jsonfile(metrics, out_path)

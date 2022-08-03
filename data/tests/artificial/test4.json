@@ -1,0 +1,36 @@
+{
+    "description": {
+        "Tests": [
+            "1. adding multiple issues where the poster of one is a commenter in the other and vice versa, e.g. 1 posts an issue and 2 comments, then 2 posts and issue and 1 comments. This tests the ability of the matrix-producing functionality to update a row after it has been created, e.g. the row corresponding to the poster of the first issue must be updated with an edge indicating that they responded to the poster of the second issue in the comments of the second issue."
+        ],
+        "Outcomes": [
+            "1. Rows must be updated after their creation to accurately reflect that an issue poster may also be a commenter in other issues, e.g. if 1 posts an issue, a row is created for them if it does not already exist and, if 1 posts a comment in a subsequent issue their row is updated. A unique commenter who subsequently opens an issue must have a row created for them, an edge with a weight of 1 given from them to the original poster and any other commenters, and then nothing done to their row for the issue they created, e.g. if userid 2 comments once on an issue by userid 1 and subsequently opens an issue, they must get a row and a weight of 1 in the first column of their row."
+        ]
+    },
+    "0": {
+        "userid": "1",
+        "comments": {
+            "0": {
+                "userid": "2"
+            }
+        }
+    },
+    "1": {
+        "userid": "2",
+        "comments": {
+            "0": {
+                "userid": "1"
+            }
+        }
+    },
+    "matrix": [
+        [
+            0,
+            1
+        ],
+        [
+            1,
+            0
+        ]
+    ]
+}
