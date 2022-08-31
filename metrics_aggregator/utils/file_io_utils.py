@@ -10,7 +10,7 @@ from json.decoder import JSONDecodeError
 import os
 import sys
 
-from src.metrics_aggregator.utils import dict_utils
+from metrics_aggregator.utils import dict_utils
 
 
 def mk_json_outpath(out_dir: str, repo_title: str, output_type: str) -> str:

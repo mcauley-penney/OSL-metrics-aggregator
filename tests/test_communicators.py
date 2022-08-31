@@ -1,7 +1,7 @@
 """Test communicator social metric-generating functionality."""
 
 import sys
-from src.metrics_aggregator import communicators as comm
+from metrics_aggregator import communicators as comm
 
 TAB = " " * 4
 

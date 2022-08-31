@@ -1,16 +1,45 @@
 """Tools for gathering metrics about the communicators in a repo's issues."""
 
 import datetime
+import math
 import igraph
 import networkx
-from src.metrics_aggregator import hierarchy
+from metrics_aggregator import hierarchy
 
 
 CLR = "\x1b[K"
 TAB = " " * 4
 
 
-def gather_all_issues_comm_metrics(issue_data: dict) -> dict:
+def gather_all_issue_comm_metrics(issue_data: dict) -> dict:
+    """
+    Gather per-issue metrics from repo data.
+
+    Args:
+        issue_data (dict): dictionary of {issue_num: issue_data} key pairs.
+
+    Returns:
+        dict of dicts: {issue_num: {issue_metrics}}
+
+    """
+    per_issue_metrics: dict = {}
+
+    print()
+    print(f"{TAB}Gathering per-issue metrics...")
+
+    for issue, data in issue_data.items():
+        per_issue_metrics[issue] = {
+            "num_comments": len(list(data["comments"])),
+            "num_discussants": len(get_unique_discussants(data)),
+            "wordiness": get_issue_wordiness(data),
+        }
+
+    print(f"{TAB * 2}Done!")
+
+    return per_issue_metrics
+
+
+def gather_all_period_comm_metrics(issue_data: dict) -> dict:
     """
     Create a dictionary of metrics for all issues in a dictionary of issues.
 
@@ -37,27 +66,35 @@ def gather_all_issues_comm_metrics(issue_data: dict) -> dict:
 
     print()
     print(f"{TAB}Partitioning issues into temporal periods...")
-
     issue_buckets: dict = create_partitioned_issue_dict(issue_data)
+    print(f"{TAB*2}{len(issue_buckets.keys())} buckets to process...\n")
 
     print(f"{TAB}Calculating metrics...")
-
     for period, issue_nums in issue_buckets.items():
+
+        keys: dict = {"keys": issue_nums}
 
         print(f'{CLR}{TAB * 2}Period: "{period}", Issues: {len(issue_nums)}')
 
+        print(f"{TAB * 3}Producing graph...")
         cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(
             issue_data, issue_nums
         )
-        print(f"{TAB * 3}Graph produced...")
+        print(f"{TAB * 4}Done!")
 
+        print(f"{TAB * 3}Gathering iGraph metrics...")
         igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
-        print(f"{TAB * 3}iGraph metrics complete...")
+        print(f"{TAB * 4}Done!")
 
+        print(f"{TAB * 3}Gathering NetworkX metrics...")
         networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
-        print(f"{TAB * 3}NetworkX metrics complete...")
+        print(f"{TAB * 4}Done!")
 
-        total_metrics[period] = {**igraph_metrics, **networkx_metrics}
+        total_metrics[period] = {
+            **keys,
+            **igraph_metrics,
+            **networkx_metrics,
+        }
 
     print(f"\n\n{TAB}Metrics calculation complete!")
 
@@ -252,22 +289,18 @@ def get_networkx_graph_metrics(ig_graph: igraph.Graph):
 
     node_constraints: dict = networkx.constraint(nx_graph)
     node_eff_sz: dict = networkx.effective_size(nx_graph)
-
-    # TODO: return dicts from these functions for
-    # consistency, even though we only need lists?
-    node_efficiencies: list = global_efficiency(nx_graph, node_eff_sz)
-
-    node_hierarchies: list = hierarchy.global_hierarchy(nx_graph)
+    node_efficiencies: dict = global_efficiency(nx_graph, node_eff_sz)
+    node_hierarchies: dict = hierarchy.global_hierarchy(nx_graph)
 
     return {
-        "constraint": calc_aggregates_from_dict(node_constraints),
-        "effective_size": calc_aggregates_from_dict(node_eff_sz),
-        "efficiency": aggregate_node_metric(node_efficiencies),
-        "hierarchy": aggregate_node_metric(node_hierarchies),
+        **calc_aggregates_from_dict(node_constraints, "constraint"),
+        **calc_aggregates_from_dict(node_eff_sz, "effective_size"),
+        **calc_aggregates_from_dict(node_efficiencies, "efficiency"),
+        **calc_aggregates_from_dict(node_hierarchies, "hierarchy"),
     }
 
 
-def calc_aggregates_from_dict(node_data: dict):
+def calc_aggregates_from_dict(node_data: dict, metric_name: str):
     """
     TODO.
 
@@ -280,7 +313,7 @@ def calc_aggregates_from_dict(node_data: dict):
     """
     node_vals: list = list(node_data.values())
 
-    return aggregate_node_metric(node_vals)
+    return aggregate_node_metric(node_vals, metric_name)
 
 
 def global_efficiency(graph, esize):
@@ -304,7 +337,9 @@ def global_efficiency(graph, esize):
     Args:
         graph ():
     """
-    return [efficiency(graph.degree(node), sz) for node, sz in esize.items()]
+    return {
+        node: efficiency(graph.degree(node), sz) for node, sz in esize.items()
+    }
 
 
 def efficiency(degree: int, effective_size: int):
@@ -342,17 +377,18 @@ def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
     Returns:
         dict: dict of social metrics derived from the input graph.
     """
+    # TODO: can give weights to calculations to improve accuracy?
     return {
         "edges": graph.ecount(),
         "vertices": graph.vcount(),
         "density": graph.density(),
         "diameter": graph.diameter(),
-        "betweenness": aggregate_node_metric(graph.betweenness()),
-        "closeness": aggregate_node_metric(graph.closeness()),
+        **aggregate_node_metric(graph.betweenness(), "betweenness"),
+        **aggregate_node_metric(graph.closeness(), "closeness"),
     }
 
 
-def aggregate_node_metric(node_metrics: list):
+def aggregate_node_metric(node_metrics: list, metric_name: str):
     """
     Return aggregate values for the given metric.
 
@@ -369,21 +405,33 @@ def aggregate_node_metric(node_metrics: list):
     """
     aggregates: dict = {}
 
-    aggregates["raw"] = node_metrics
-    aggregates["avg"] = 0
-    aggregates["max"] = 0
-    aggregates["sum"] = sum(node_metrics)
+    avg_key: str = metric_name + "_" + "avg"
+    max_key: str = metric_name + "_" + "max"
+    sum_key: str = metric_name + "_" + "sum"
 
-    num_nodes = len(node_metrics)
+    for metric_type in (avg_key, max_key, sum_key):
+        aggregates[metric_type] = 0
 
-    if num_nodes > 0:
-        aggregates["max"] = max(node_metrics)
-        aggregates["avg"] = aggregates["sum"] / num_nodes
+    if len(node_metrics) == 0:
+        return aggregates
+
+    clean_metrics: list = [val for val in node_metrics if not math.isnan(val)]
+    num_nodes = len(clean_metrics)
+
+    if num_nodes == 0:
+        print(f"{TAB * 4}All nodes are NaN...")
+        return aggregates
+
+    for key, val in {
+        sum_key: sum(clean_metrics),
+        max_key: max(clean_metrics),
+        avg_key: sum(clean_metrics) / num_nodes,
+    }.items():
+        aggregates[key] = val
 
     return aggregates
 
 
-# NOTE: below this line, all unused right now
 def get_unique_discussants(issue_dict: dict) -> list:
     """
     Create set of discussants in a dictionary of comments on an issue.
@@ -413,24 +461,12 @@ def get_discussants_list(issue_dict: dict) -> list[str]:
     id_list = [issue_dict["userid"]]
 
     id_list += [
-        comment["discussant"]["userid"]
-        for comment in issue_dict["issue_comments"].values()
-        if isinstance(comment["discussant"]["userid"], str)
+        comment["userid"]
+        for comment in issue_dict["comments"].values()
+        if isinstance(comment["userid"], str)
     ]
 
     return id_list
-
-
-def get_graph_plot(graph, path: str):
-    """
-    TODO.
-
-    :param graph_obj:
-    :type graph_obj:
-    :param discussant_list:
-    :type discussant_list: list
-    """
-    igraph.plot(graph, bbox=(200, 200), target=f"{path}.png")
 
 
 def get_issue_wordiness(issue_dict: dict) -> int:
@@ -452,10 +488,9 @@ def get_issue_wordiness(issue_dict: dict) -> int:
         )
 
     except KeyError:
-        # TODO: comment: why pass?
         pass
 
-    for comment in issue_dict["issue_comments"].values():
+    for comment in issue_dict["comments"].values():
         body = comment["body"]
 
         # get all words greater in len than 2

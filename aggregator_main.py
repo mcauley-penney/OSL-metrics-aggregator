@@ -6,8 +6,8 @@ iGraph docs:
 
 """
 import argparse
-from src.metrics_aggregator import communicators as comm
-from src.metrics_aggregator.utils import file_io_utils as file_io
+from metrics_aggregator import communicators as comm
+from metrics_aggregator.utils import file_io_utils as file_io
 
 TAB = " " * 4
 
@@ -17,7 +17,10 @@ def main():
     in_json_path: str = get_cli_args()
     issue_data: dict = file_io.read_jsonfile_into_dict(in_json_path)
 
-    metrics: dict = comm.gather_all_issues_comm_metrics(issue_data)
+    metrics: dict = {
+        "per_issue": comm.gather_all_issue_comm_metrics(issue_data),
+        "per_period": comm.gather_all_period_comm_metrics(issue_data),
+    }
 
     # get out file name
     issue_filename: str = in_json_path.rsplit("/", 1)[1]
