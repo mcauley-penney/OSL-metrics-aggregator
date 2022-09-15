@@ -26,7 +26,9 @@ def main():
     issue_filename: str = in_json_path.rsplit("/", 1)[1]
     out_filename: str = issue_filename.rsplit(".", 1)[0]
     out_path: str = file_io.mk_json_outpath(
-        "./data/metrics/output/", out_filename, "_metrics"
+        "/home/m/files/OSL/OSL-data/metrics_processor/powertoys",
+        out_filename,
+        "_metrics",
     )
 
     file_io.write_dict_to_jsonfile(metrics, out_path)

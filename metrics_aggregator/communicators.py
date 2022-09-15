@@ -201,7 +201,7 @@ def make_igraph_period_network_matrix(
 
 
 def make_igraph_issue_network_matrix(
-    cur_issue: dict, cur_graph: igraph.Graph
+    cur_issue: dict, graph: igraph.Graph
 ) -> igraph.Graph:
     """
     Create an adjacency matrix for participants in one issue conversation.
@@ -220,41 +220,32 @@ def make_igraph_issue_network_matrix(
         igraph.Graph: graph object update with nodes and edges from the
         conversation that transpired in the given issue parameter
     """
-    cur_node_list: list = []
+    issue_nodes: list = []
+    edges: list = []
 
     # idempotently add the original poster of the issue
     userid: str = cur_issue["userid"]
 
-    cur_vertex_obj, cur_graph = idempotent_add(userid, cur_graph)
-    cur_node_list.append(cur_vertex_obj)
+    cur_vertex, graph = idempotent_add(userid, graph)
+    issue_nodes.append(cur_vertex)
 
     for _, comment in cur_issue["comments"].items():
 
         # idempotently add each commenter
         userid = comment["userid"]
 
-        cur_vertex_obj, cur_graph = idempotent_add(userid, cur_graph)
-        cur_node_list.append(cur_vertex_obj)
+        cur_vertex, graph = idempotent_add(userid, graph)
+        issue_nodes.append(cur_vertex)
 
-        # for each vertex added to the current graph, add an edge
-        # from the current vertex.
-        for added_vertex in cur_node_list:
-            try:
-                cur_graph.es.find(_between=([cur_vertex_obj], [added_vertex]))
+        edges.extend(
+            (cur_vertex, present_vertex)
+            for present_vertex in issue_nodes
+            if cur_vertex["name"] != present_vertex["name"]
+        )
 
-            # if there is no edge present, add the edge and init
-            # the weight.
-            except ValueError:
-                # only continue if we the current vertex is
-                # not being compared to itself
-                if cur_vertex_obj["name"] != added_vertex["name"]:
-                    cur_graph.add_edge(cur_vertex_obj, added_vertex)
-                    cur_graph[cur_vertex_obj, added_vertex] = 1
+    graph.add_edges(edges)
 
-            else:
-                cur_graph[cur_vertex_obj, added_vertex] += 1
-
-    return cur_graph
+    return graph
 
 
 def idempotent_add(userid, graph):
@@ -486,6 +477,9 @@ def get_issue_wordiness(issue_dict: dict) -> int:
                 if len(word) > 2 and word.lower() != "nan"
             ]
         )
+
+    except AttributeError:
+        pass
 
     except KeyError:
         pass
