@@ -9,17 +9,19 @@
             "2. Similar to Necessary Outcome 2; if 2 comments twice and 3 comments once after, a weight of two must be given to the edge between 3 and 2."
         ]
     },
-    "0": {
-        "userid": "1",
-        "comments": {
-            "0": {
-                "userid": "2"
-            },
-            "1": {
-                "userid": "2"
-            },
-            "2": {
-                "userid": "3"
+    "by_issue": {
+        "0": {
+            "userid": "1",
+            "comments": {
+                "0": {
+                    "userid": "2"
+                },
+                "1": {
+                    "userid": "2"
+                },
+                "2": {
+                    "userid": "3"
+                }
             }
         }
     },

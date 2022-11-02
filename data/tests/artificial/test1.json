@@ -7,19 +7,21 @@
             "1. a weight corresponding to the amount of responses between the duplicate commenter and duplicate poster is added to the edge from the commenter to the poster. For the example given in the correspond test above, there must be only two rows and a weight of two for the edge from the commenter to the poster (row 1, column 0)."
         ]
     },
-    "0": {
-        "userid": "1",
-        "comments": {
-            "0": {
-                "userid": "2"
+    "by_issue": {
+        "0": {
+            "userid": "1",
+            "comments": {
+                "0": {
+                    "userid": "2"
+                }
             }
-        }
-    },
-    "1": {
-        "userid": "1",
-        "comments": {
-            "0": {
-                "userid": "2"
+        },
+        "1": {
+            "userid": "1",
+            "comments": {
+                "0": {
+                    "userid": "2"
+                }
             }
         }
     },

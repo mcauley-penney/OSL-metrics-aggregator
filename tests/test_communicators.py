@@ -91,7 +91,7 @@ def verify_issue_matrix_equivalence(issue_test_input: dict):
     correct_matrix: dict = issue_test_input["matrix"]
     issue_data: dict = issue_test_input["by_issue"]
 
-    cur_network_graph = comm.make_period_network_matrix(
+    cur_network_graph = comm.make_igraph_period_network_matrix(
         issue_data, list(issue_data.keys())
     )
 

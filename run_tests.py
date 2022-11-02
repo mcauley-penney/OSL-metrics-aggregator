@@ -1,8 +1,8 @@
 """TODO."""
 
 import argparse
-from tests import test_communicators as comm
-from src.metrics_aggregator.utils import file_io_utils as file_io
+from tests import test_communicators as test_comm
+from metrics_aggregator.utils import file_io_utils as file_io
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     in_json_path: str = get_cli_args()
     input_dict: dict = file_io.read_jsonfile_into_dict(in_json_path)
 
-    comm.verify_issue_matrix_equivalence(input_dict)
+    test_comm.verify_issue_matrix_equivalence(input_dict)
 
 
 def get_cli_args() -> str:

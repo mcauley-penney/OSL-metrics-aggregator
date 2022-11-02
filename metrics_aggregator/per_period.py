@@ -1,42 +1,15 @@
 """Tools for gathering metrics about the communicators in a repo's issues."""
 
+import concurrent.futures
 import datetime
 import math
 import igraph
 import networkx
-from metrics_aggregator import hierarchy
+from metrics_aggregator import __hierarchy as hierarchy
 
 
 CLR = "\x1b[K"
 TAB = " " * 4
-
-
-def gather_all_issue_comm_metrics(issue_data: dict) -> dict:
-    """
-    Gather per-issue metrics from repo data.
-
-    Args:
-        issue_data (dict): dictionary of {issue_num: issue_data} key pairs.
-
-    Returns:
-        dict of dicts: {issue_num: {issue_metrics}}
-
-    """
-    per_issue_metrics: dict = {}
-
-    print()
-    print(f"{TAB}Gathering per-issue metrics...")
-
-    for issue, data in issue_data.items():
-        per_issue_metrics[issue] = {
-            "num_comments": len(list(data["comments"])),
-            "num_discussants": len(get_unique_discussants(data)),
-            "wordiness": get_issue_wordiness(data),
-        }
-
-    print(f"{TAB * 2}Done!")
-
-    return per_issue_metrics
 
 
 def gather_all_period_comm_metrics(issue_data: dict) -> dict:
@@ -60,45 +33,31 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
         dict: {period str: dict of metrics from graph of "conversation" for
                 period key}
     """
-    igraph_metrics: dict = {}
-    networkx_metrics: dict = {}
+    id_index: int = 0
+    num_workers: int = 12
     total_metrics: dict = {}
 
-    print()
-    print(f"{TAB}Partitioning issues into temporal periods...")
+    print(f"\n{TAB}Partitioning issues into temporal periods...")
     issue_buckets: dict = create_partitioned_issue_dict(issue_data)
-    print(f"{TAB*2}{len(issue_buckets.keys())} buckets to process...\n")
+    print(f"{TAB*2}- {len(issue_data.keys())} keys")
+    print(f"{TAB*2}- {len(issue_buckets.keys())} buckets\n")
 
     print(f"{TAB}Calculating metrics...")
-    for period, issue_nums in issue_buckets.items():
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=num_workers
+    ) as executor:
+        for period, issue_nums in issue_buckets.items():
+            executor.submit(
+                gather_single_period_comm_metrics,
+                issue_data,
+                period,
+                issue_nums,
+                total_metrics,
+                id_index,
+            )
+            id_index += 1
 
-        keys: dict = {"keys": issue_nums}
-
-        print(f'{CLR}{TAB * 2}Period: "{period}", Issues: {len(issue_nums)}')
-
-        print(f"{TAB * 3}Producing graph...")
-        cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(
-            issue_data, issue_nums
-        )
-        print(f"{TAB * 4}Done!")
-
-        print(f"{TAB * 3}Gathering iGraph metrics...")
-        igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
-        print(f"{TAB * 4}Done!")
-
-        print(f"{TAB * 3}Gathering NetworkX metrics...")
-        networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
-        print(f"{TAB * 4}Done!")
-
-        total_metrics[period] = {
-            **keys,
-            **igraph_metrics,
-            **networkx_metrics,
-        }
-
-    print(f"\n\n{TAB}Metrics calculation complete!")
-
-    return total_metrics
+    return dict(sorted(total_metrics.items()))
 
 
 # TODO: could be a lot smarter, I think
@@ -175,6 +134,43 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
         issue_interval_data[date_key_list[i]].append(key)
 
     return issue_interval_data
+
+
+def gather_single_period_comm_metrics(
+    issue_data: dict,
+    period: str,
+    issue_nums: list,
+    metrics_output: dict,
+    run_id: int,
+):
+    """
+    Gather all communication metrics for one temporal period.
+
+    Args:
+        period ():
+        issue_nums ():
+    """
+    keys: dict = {"keys": issue_nums}
+
+    title: str = f"{period}, {len(issue_nums)} issues"
+
+    print(f"{TAB*2}{run_id} Initiated: {title}")
+
+    cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(
+        issue_data, issue_nums
+    )
+
+    igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
+
+    networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
+
+    metrics_output[period] = {
+        **keys,
+        **igraph_metrics,
+        **networkx_metrics,
+    }
+
+    print(f"{TAB*2}{run_id} Complete: {title}")
 
 
 def make_igraph_period_network_matrix(
@@ -278,13 +274,11 @@ def get_networkx_graph_metrics(ig_graph: igraph.Graph):
     """
     nx_graph = ig_graph.to_networkx()
 
-    node_constraints: dict = networkx.constraint(nx_graph)
     node_eff_sz: dict = networkx.effective_size(nx_graph)
     node_efficiencies: dict = global_efficiency(nx_graph, node_eff_sz)
     node_hierarchies: dict = hierarchy.global_hierarchy(nx_graph)
 
     return {
-        **calc_aggregates_from_dict(node_constraints, "constraint"),
         **calc_aggregates_from_dict(node_eff_sz, "effective_size"),
         **calc_aggregates_from_dict(node_efficiencies, "efficiency"),
         **calc_aggregates_from_dict(node_hierarchies, "hierarchy"),
@@ -374,6 +368,7 @@ def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
         "vertices": graph.vcount(),
         "density": graph.density(),
         "diameter": graph.diameter(),
+        **aggregate_node_metric(graph.constraint(), "constraint"),
         **aggregate_node_metric(graph.betweenness(), "betweenness"),
         **aggregate_node_metric(graph.closeness(), "closeness"),
     }
@@ -410,7 +405,6 @@ def aggregate_node_metric(node_metrics: list, metric_name: str):
     num_nodes = len(clean_metrics)
 
     if num_nodes == 0:
-        print(f"{TAB * 4}All nodes are NaN...")
         return aggregates
 
     for key, val in {
@@ -421,75 +415,3 @@ def aggregate_node_metric(node_metrics: list, metric_name: str):
         aggregates[key] = val
 
     return aggregates
-
-
-def get_unique_discussants(issue_dict: dict) -> list:
-    """
-    Create set of discussants in a dictionary of comments on an issue.
-
-    TODO:
-    :param issuecmmnt_dict:
-    :type issuecmmnt_dict: dict
-    :return:
-    :rtype:
-    """
-    discussant_list = get_discussants_list(issue_dict)
-
-    discussants_set = list(dict.fromkeys(discussant_list))
-
-    return discussants_set
-
-
-def get_discussants_list(issue_dict: dict) -> list[str]:
-    """
-    TODO.
-
-    :param issue_dict:
-    :type issue_dict: dict
-    :return: list of discussants in issue, including original poster
-    :rtype: list
-    """
-    id_list = [issue_dict["userid"]]
-
-    id_list += [
-        comment["userid"]
-        for comment in issue_dict["comments"].values()
-        if isinstance(comment["userid"], str)
-    ]
-
-    return id_list
-
-
-def get_issue_wordiness(issue_dict: dict) -> int:
-    """
-    Count the amount of words over a length of 2 in each comment in an issue.
-
-    :param issuecmmnt_dict: dictionary of comments for an issue
-    :type issuecmmnt_dict: dict
-    """
-    sum_wc = 0
-
-    try:
-        sum_wc += len(
-            [
-                word
-                for word in issue_dict["body"].split()
-                if len(word) > 2 and word.lower() != "nan"
-            ]
-        )
-
-    except AttributeError:
-        pass
-
-    except KeyError:
-        pass
-
-    for comment in issue_dict["comments"].values():
-        body = comment["body"]
-
-        # get all words greater in len than 2
-        split_body = [word for word in body.split() if len(word) > 2]
-
-        sum_wc += len(split_body)
-
-    return sum_wc
