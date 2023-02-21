@@ -6,7 +6,9 @@ iGraph docs:
 
 """
 import argparse
-from metrics_aggregator import per_issue, per_period
+import sys
+from metrics_aggregator.standard import per_issue as standard_issue, per_period as standard_period
+from metrics_aggregator.improved import per_issue as improved_issue, per_period as improved_period
 from metrics_aggregator.utils import file_io_utils as file_io
 
 TAB = " " * 4
@@ -17,10 +19,24 @@ def main():
     cfg: dict = get_user_cfg()
     issue_data: dict = file_io.read_jsonfile_into_dict(cfg["issue_data"])
 
-    metrics: dict = {
-        "per_issue": per_issue.gather_all_issue_comm_metrics(issue_data),
-        "per_period": per_period.gather_all_period_comm_metrics(issue_data),
-    }
+    try:
+        granularity = cfg["metric_granularity"]
+
+    except KeyError:
+        print("Configuration requires granularity!")
+        sys.exit()
+
+    if granularity == "period":
+        metrics: dict = {
+            "per_issue": standard_issue.gather_all_issue_comm_metrics(issue_data),
+            "per_period": standard_period.gather_all_period_comm_metrics(issue_data),
+        }
+
+    else:
+        metrics: dict = {
+            "per_issue": improved_issue.gather_all_issue_comm_metrics(issue_data),
+            "per_period": improved_period.gather_all_period_comm_metrics(issue_data),
+        }
 
     file_io.write_dict_to_jsonfile(metrics, cfg["out_path"])
 
@@ -52,6 +68,11 @@ def get_cli_args() -> str:
     arg_parser.add_argument(
         "json_cfg",
         help="Path to JSON configuration file",
+    )
+
+    arg_parser.add_argument(
+        "metric_granularity",
+        help="The granularity to use when gathering certain metrics.",
     )
 
     return arg_parser.parse_args().json_cfg
