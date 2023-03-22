@@ -20,13 +20,13 @@ def main():
     issue_data: dict = file_io.read_jsonfile_into_dict(cfg["issue_data"])
 
     try:
-        granularity = cfg["metric_granularity"]
+        method = cfg["processing_method"]
 
     except KeyError:
-        print("Configuration requires granularity!")
+        print("Configuration requires processing method!")
         sys.exit()
 
-    if granularity == "period":
+    if method == "old":
         metrics: dict = {
             "per_issue": standard_issue.gather_all_issue_comm_metrics(issue_data),
             "per_period": standard_period.gather_all_period_comm_metrics(issue_data),
@@ -68,11 +68,6 @@ def get_cli_args() -> str:
     arg_parser.add_argument(
         "json_cfg",
         help="Path to JSON configuration file",
-    )
-
-    arg_parser.add_argument(
-        "metric_granularity",
-        help="The granularity to use when gathering certain metrics.",
     )
 
     return arg_parser.parse_args().json_cfg

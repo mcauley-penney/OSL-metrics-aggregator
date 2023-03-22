@@ -142,8 +142,10 @@ def read_jsontext_into_dict(json_text: str) -> dict:
     try:
         json_dict = json.loads(json_text)
 
-    except JSONDecodeError:
-        return {}
+    except JSONDecodeError as e:
+        print(f"\nNo valid JSON found: {e}\n")
+        print("Exiting...")
+        sys.exit(1)
 
     else:
         return json_dict

@@ -33,14 +33,12 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
                 period key}
     """
     res: dict = {}
-    workers: int = 12
+    workers: int = 10
 
     print(f"\n{TAB}Partitioning issues into temporal periods...")
     issue_buckets: dict = create_partitioned_issue_dict(issue_data)
     print(f"{TAB*2}- {len(issue_data.keys())} keys")
     print(f"{TAB*2}- {len(issue_buckets.keys())} buckets\n")
-
-    print(f"{TAB}Calculating metrics...")
 
     with futures.ProcessPoolExecutor(max_workers=workers) as executor:
         for period, issue_nums in issue_buckets.items():
@@ -50,6 +48,7 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
                     gather_single_period_comm_metrics,
                     issue_data,
                     issue_nums,
+                    period
                 )
             }
 
@@ -61,46 +60,39 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
 def create_partitioned_issue_dict(issue_data: dict) -> dict:
     """
     Partition all input issues into a dictionary of time frames.
-
     Each key is a string of a date and each val is a list of issue numbers
     that fall into that time frame.
-
     Note, 07/07/2022:
         The values of each key are issues that were closed
         before the date of the key but after the last key. If an issue was
         closed on March 1st, the last key was February 1st, and the current key
         is April 1st, the issue closed on March 1st belongs in the April 1st
         key.
-
     Args:
         issue_data (dict): dictionary of data mined about the issues in a
         repository's history.
-
     Returns:
         dict: {date string: python list of issue nums}
     """
-    time_fmt = "%Y-%m-%dT%H:%M:%SZ"
+
+    def datetime_to_github_time_str(date: datetime) -> str:
+        return datetime.strftime(date, "%m/%d/%y, %I:%M:%S %p")
 
     def get_start_date(issue_data: dict) -> datetime:
         """
         TODO.
-
         Args:
             issue_data (dict):
-
         Returns:
-            datetime:
+            datetime.datetime:
         """
         first_item_val = list(issue_data.values())[0]
         start_date: str = first_item_val["closed_at"].split(",")[0]
 
-        return time_str_to_datetime(start_date)
+        return datetime.strptime(start_date, "%m/%d/%y")
 
-    def time_str_to_datetime(date: str) -> datetime:
-        return datetime.strptime(date, time_fmt)
-
-    def datetime_to_time_str(date: datetime) -> str:
-        return datetime.strftime(date, time_fmt)
+    def github_time_str_to_datetime(date: str) -> datetime:
+        return datetime.strptime(date, "%m/%d/%y, %I:%M:%S %p")
 
     def init_issue_interval_dict_keys(issues: dict) -> dict:
         interval: timedelta = timedelta(weeks=12, days=0)
@@ -109,7 +101,7 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
 
         while start_date < datetime.now():
             next_interval_start = start_date + interval
-            interval_date_str = datetime_to_time_str(next_interval_start)
+            interval_date_str = datetime_to_github_time_str(next_interval_start)
             issue_interval_data[interval_date_str] = []
             start_date = next_interval_start
 
@@ -119,10 +111,11 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     date_key_list = list(issue_interval_data.keys())
 
     for key, val in issue_data.items():
-        cur_date = time_str_to_datetime(val["closed_at"])
+        cur_date = github_time_str_to_datetime(val["closed_at"])
 
+        # NOTE: could use binary search if performance became an issue
         i = 0
-        while cur_date > time_str_to_datetime(date_key_list[i]):
+        while cur_date > github_time_str_to_datetime(date_key_list[i]):
             i += 1
 
         issue_interval_data[date_key_list[i]].append(key)
@@ -130,7 +123,7 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     return issue_interval_data
 
 
-def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list):
+def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list, period_name):
     """
     Gather all communication metrics for one temporal period.
 
@@ -142,11 +135,18 @@ def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list):
 
     cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(issue_data, issue_nums)
 
+    print(f"{TAB*2} #{period_name}: getting period-issue metrics...\n")
+
     period_issue_metrics: dict = get_period_issue_metrics(cur_bucket_graph, issue_data, issue_nums)
 
+    # fast, doesn't need print statement
     igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
 
+    print(f"{TAB*2} #{period_name}: getting networkx metrics...\n")
+
     networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
+
+    print(f"{TAB*2} #{period_name}: done\n")
 
     return {
         **keys,
