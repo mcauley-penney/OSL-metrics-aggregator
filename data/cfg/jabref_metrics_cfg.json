@@ -1,4 +1,5 @@
 {
-	"issue_data": "/home/m/files/OSL/OSL-data/extractor/jabref/filtered/jabref_2022-09_filtered.json",
-	"out_path": "/home/m/files/OSL/OSL-data/metrics_processor/jabref_metrics_2022-09.json"
+	"issue_data": "/home/m/files/OSL/OSL-data/extractor/jabref/filtered/jabref_2021-10_filtered.json",
+	"out_path": "/home/m/files/OSL/OSL-data/metrics_processor/jabref-metrics_new-method_2021-10.json",
+	"processing_method": "new"
 }
