@@ -75,8 +75,13 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
         dict: {date string: python list of issue nums}
     """
 
+    TIME_FMT = "%Y-%m-%dT%H:%M:%SZ"
+
     def datetime_to_github_time_str(date: datetime) -> str:
-        return datetime.strftime(date, "%m/%d/%y, %I:%M:%S %p")
+        return datetime.strftime(date, TIME_FMT)
+
+    def github_time_str_to_datetime(date: str) -> datetime:
+        return datetime.strptime(date, TIME_FMT)
 
     def get_start_date(issue_data: dict) -> datetime:
         """
@@ -89,10 +94,7 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
         first_item_val = list(issue_data.values())[0]
         start_date: str = first_item_val["closed_at"].split(",")[0]
 
-        return datetime.strptime(start_date, "%m/%d/%y")
-
-    def github_time_str_to_datetime(date: str) -> datetime:
-        return datetime.strptime(date, "%m/%d/%y, %I:%M:%S %p")
+        return github_time_str_to_datetime(start_date)
 
     def init_issue_interval_dict_keys(issues: dict) -> dict:
         interval: timedelta = timedelta(weeks=12, days=0)
