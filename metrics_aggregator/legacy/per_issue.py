@@ -1,4 +1,4 @@
-"""TODO."""
+"""Legacy per-issue metrics."""
 
 
 def gather_all_issue_comm_metrics(issue_data: dict) -> dict:
@@ -27,12 +27,6 @@ def gather_all_issue_comm_metrics(issue_data: dict) -> dict:
 def get_unique_discussants(issue_dict: dict) -> list:
     """
     Create set of discussants in a dictionary of comments on an issue.
-
-    TODO:
-    :param issuecmmnt_dict:
-    :type issuecmmnt_dict: dict
-    :return:
-    :rtype:
     """
     discussant_list = get_discussants_list(issue_dict)
 
@@ -43,12 +37,7 @@ def get_unique_discussants(issue_dict: dict) -> list:
 
 def get_discussants_list(issue_dict: dict) -> list[str]:
     """
-    TODO.
-
-    :param issue_dict:
-    :type issue_dict: dict
-    :return: list of discussants in issue, including original poster
-    :rtype: list
+    Return the list of discussants in an issue, including the original poster.
     """
     id_list = [issue_dict["userid"]]
 
@@ -64,9 +53,6 @@ def get_discussants_list(issue_dict: dict) -> list[str]:
 def get_issue_wordiness(issue_dict: dict) -> int:
     """
     Count the amount of words over a length of 2 in each comment in an issue.
-
-    :param issuecmmnt_dict: dictionary of comments for an issue
-    :type issuecmmnt_dict: dict
     """
     sum_wc = 0
 
@@ -84,10 +70,7 @@ def get_issue_wordiness(issue_dict: dict) -> int:
 
     for comment in issue_dict["comments"].values():
         body = comment["body"]
-
-        # get all words greater in len than 2
         split_body = [word for word in body.split() if len(word) > 2]
-
         sum_wc += len(split_body)
 
     return sum_wc

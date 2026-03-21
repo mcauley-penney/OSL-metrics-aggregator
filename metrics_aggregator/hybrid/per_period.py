@@ -1,4 +1,4 @@
-"""Tools for gathering metrics about the communicators in a repo's issues."""
+"""Hybrid period metrics combine issue-level and whole-period aggregates."""
 
 from concurrent import futures
 from datetime import datetime, timedelta
@@ -9,28 +9,15 @@ from metrics_aggregator import __hierarchy as hierarchy
 
 
 TAB = " " * 4
+TIME_FMT = "%m/%d/%y, %I:%M:%S %p"
 
 
 def gather_all_period_comm_metrics(issue_data: dict) -> dict:
     """
-    Create a dictionary of metrics for all issues in a dictionary of issues.
+    Create a dictionary of period metrics for all issues in a repository.
 
-    Notes:
-        This functionality requires:
-            - issue number
-            - closure date
-            - userid
-            - issue comments
-                - userid
-                - comment body
-
-    Args:
-        issue_data (dict): dict of data about all issues of interest in a
-        repository's history.
-
-    Returns:
-        dict: {period str: dict of metrics from graph of "conversation" for
-                period key}
+    The hybrid pipeline emits nested per-period issue metrics and whole-period
+    graph aggregates.
     """
     res: dict = {}
     workers: int = 10
@@ -48,34 +35,19 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
                     gather_single_period_comm_metrics,
                     issue_data,
                     issue_nums,
-                    period
+                    period,
                 )
             }
 
-        res = {period: f.result() for (period, f) in res.items()}
+        res = {period: future.result() for (period, future) in res.items()}
 
     return res
 
 
 def create_partitioned_issue_dict(issue_data: dict) -> dict:
     """
-    Partition all input issues into a dictionary of time frames.
-    Each key is a string of a date and each val is a list of issue numbers
-    that fall into that time frame.
-    Note, 07/07/2022:
-        The values of each key are issues that were closed
-        before the date of the key but after the last key. If an issue was
-        closed on March 1st, the last key was February 1st, and the current key
-        is April 1st, the issue closed on March 1st belongs in the April 1st
-        key.
-    Args:
-        issue_data (dict): dictionary of data mined about the issues in a
-        repository's history.
-    Returns:
-        dict: {date string: python list of issue nums}
+    Partition input issues into 12-week periods keyed by period end date.
     """
-
-    TIME_FMT = "%m/%d/%y, %I:%M:%S %p"
 
     def datetime_to_github_time_str(date: datetime) -> str:
         return datetime.strftime(date, TIME_FMT)
@@ -83,15 +55,8 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     def github_time_str_to_datetime(date: str) -> datetime:
         return datetime.strptime(date, TIME_FMT)
 
-    def get_start_date(issue_data: dict) -> datetime:
-        """
-        TODO.
-        Args:
-            issue_data (dict):
-        Returns:
-            datetime.datetime:
-        """
-        first_item_val = list(issue_data.values())[0]
+    def get_start_date(issues: dict) -> datetime:
+        first_item_val = list(issues.values())[0]
         return github_time_str_to_datetime(first_item_val["closed_at"])
 
     def init_issue_interval_dict_keys(issues: dict) -> dict:
@@ -113,7 +78,6 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     for key, val in issue_data.items():
         cur_date = github_time_str_to_datetime(val["closed_at"])
 
-        # NOTE: could use binary search if performance became an issue
         i = 0
         while cur_date > github_time_str_to_datetime(date_key_list[i]):
             i += 1
@@ -123,27 +87,20 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     return issue_interval_data
 
 
-def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list, period_name):
+def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list, period_name: str) -> dict:
     """
     Gather all communication metrics for one temporal period.
-
-    Args:
-        period ():
-        issue_nums ():
     """
     keys: dict = {"keys": issue_nums}
-
     cur_bucket_graph: igraph.Graph = make_igraph_period_network_matrix(issue_data, issue_nums)
 
     print(f"{TAB*2} #{period_name}: getting period-issue metrics...\n")
-
     period_issue_metrics: dict = get_period_issue_metrics(cur_bucket_graph, issue_data, issue_nums)
 
-    # fast, doesn't need print statement
+    print(f"{TAB*2} #{period_name}: getting whole-period graph metrics...\n")
     igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
 
     print(f"{TAB*2} #{period_name}: getting networkx metrics...\n")
-
     networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
 
     print(f"{TAB*2} #{period_name}: done\n")
@@ -156,42 +113,24 @@ def gather_single_period_comm_metrics(issue_data: dict, issue_nums: list, period
     }
 
 
-def get_period_issue_metrics(graph: igraph.Graph, issue_data, issue_nums) -> dict:
+def get_period_issue_metrics(graph: igraph.Graph, issue_data: dict, issue_nums: list) -> dict:
     """
-    TODO.
-
-    Args:
-        issue_data ():
-        issue_nums ():
-        graph:
-
-    Returns:
-        todo.
-
+    Gather issue-level metrics derived from each issue's participants in the
+    period graph.
     """
-    def create_dev_role_metric_dict(graph: igraph.Graph) -> dict:
-        """
-        TODO.
 
-        Args:
-            graph:
-
-        Returns:
-            todo.
-
-        """
+    def create_dev_role_metric_dict(cur_graph: igraph.Graph) -> dict:
         metrics: dict = {}
 
         try:
-            vseq = graph.vs["name"]
+            vertex_names = cur_graph.vs["name"]
         except KeyError:
             return {}
 
-        betweenness = graph.betweenness()
-        closeness = graph.closeness()
+        betweenness = cur_graph.betweenness()
+        closeness = cur_graph.closeness()
 
-        # can get names of vertices, userids in our case, with graph.vs()["name"]
-        for index, userid in enumerate(vseq):
+        for index, userid in enumerate(vertex_names):
             metrics[userid] = {
                 "betweenness": betweenness[index],
                 "closeness": closeness[index],
@@ -199,44 +138,35 @@ def get_period_issue_metrics(graph: igraph.Graph, issue_data, issue_nums) -> dic
 
         return metrics
 
-    def get_issue_set(issue) -> set:
-        participants: set = set()
-
-        participants.add(issue["userid"])
+    def get_issue_set(issue: dict) -> set:
+        participants: set = {issue["userid"]}
 
         for _, comment in issue["comments"].items():
             participants.add(comment["userid"])
 
         return participants
 
-    def get_issue_metrics(participants, metrics) -> dict:
+    def get_issue_metrics(participants: set, metric_lookup: dict) -> dict:
         betweennesses: list = []
         closenesses: list = []
 
         for participant in participants:
-            cur_metrics = metrics[participant]
+            cur_metrics = metric_lookup[participant]
             betweennesses.append(cur_metrics["betweenness"])
             closenesses.append(cur_metrics["closeness"])
 
         return {"betweenness": betweennesses, "closeness": closenesses}
 
     period_issue_metrics: dict = {}
-
-    # consider using https://igraph.readthedocs.io/en/main/api/igraph.VertexSeq.html#select
     dev_role_metrics: dict = create_dev_role_metric_dict(graph)
 
     for num in issue_nums:
         cur_issue: dict = issue_data[num]
-
-        # get who participated in the issue
         issue_participants: set = get_issue_set(cur_issue)
-
-        # get their values from dev_role_metrics
         metrics = get_issue_metrics(issue_participants, dev_role_metrics)
 
-        # send to be calculated
         period_issue_metrics[num] = {
-            "participants": list(issue_participants),
+            "participants": sorted(issue_participants),
             **aggregate_node_metric(metrics["betweenness"], "betweenness"),
             **aggregate_node_metric(metrics["closeness"], "closeness"),
         }
@@ -246,14 +176,7 @@ def get_period_issue_metrics(graph: igraph.Graph, issue_data, issue_nums) -> dic
 
 def make_igraph_period_network_matrix(issue_data: dict, period_issue_nums: list) -> igraph.Graph:
     """
-    TODO.
-
-    Args:
-        period_num_list ():
-        issue_data (dict):
-
-    Returns:
-        igraph.Graph: graph of social network for period
+    Create a graph of all communication in a single period.
     """
     cur_bucket_graph = igraph.Graph(directed=True)
 
@@ -265,32 +188,15 @@ def make_igraph_period_network_matrix(issue_data: dict, period_issue_nums: list)
 
 def make_igraph_issue_network_matrix(cur_issue: dict, graph: igraph.Graph) -> igraph.Graph:
     """
-    Create an adjacency matrix for participants in one issue conversation.
-
-    Notes:
-        This functionality requires:
-            - userid
-            - issue comments
-                - userid
-
-    Args:
-        cur_issue (dict):
-        cur_graph (igraph.Graph):
-
-    Returns:
-        igraph.Graph: graph object update with nodes and edges from the
-        conversation that transpired in the given issue parameter
+    Add the communication edges for one issue to the running graph.
     """
-    # TODO: can use sets?
     issue_nodes: list = []
     edges: list = []
 
-    # idempotently add the original poster of the issue
     cur_vertex, graph = idempotent_add(cur_issue["userid"], graph)
     issue_nodes.append(cur_vertex)
 
     for _, comment in cur_issue["comments"].items():
-        # idempotently add each commenter
         cur_vertex, graph = idempotent_add(comment["userid"], graph)
         issue_nodes.append(cur_vertex)
 
@@ -305,17 +211,9 @@ def make_igraph_issue_network_matrix(cur_issue: dict, graph: igraph.Graph) -> ig
     return graph
 
 
-def idempotent_add(userid, graph):
+def idempotent_add(userid: str, graph: igraph.Graph):
     """
-    TODO: update name, finish docstring.
-
-    Args:
-        userid ():
-        graph ():
-
-    Returns:
-        vertex_obj:
-        graph:
+    Add a vertex only if it does not already exist.
     """
     try:
         vertex_obj = graph.vs.find(name=userid)
@@ -326,12 +224,9 @@ def idempotent_add(userid, graph):
     return vertex_obj, graph
 
 
-def get_networkx_graph_metrics(ig_graph: igraph.Graph):
+def get_networkx_graph_metrics(ig_graph: igraph.Graph) -> dict:
     """
-    Get NetworkX-specific metrics from an iGraph graph.
-
-    Args:
-        graph (igraph.Graph): igraph graph to convert to NetworkX
+    Get NetworkX-specific aggregates from an iGraph graph.
     """
     nx_graph = ig_graph.to_networkx()
 
@@ -346,58 +241,28 @@ def get_networkx_graph_metrics(ig_graph: igraph.Graph):
     }
 
 
-def calc_aggregates_from_dict(node_data: dict, metric_name: str):
+def calc_aggregates_from_dict(node_data: dict, metric_name: str) -> dict:
     """
-    TODO.
-
-    Args:
-        node_data (dict):
-
-    Returns:
-        dict: aggregate values for list of node values
-
+    Return aggregate values for the values in a node-keyed metric dictionary.
     """
     node_vals: list = list(node_data.values())
 
     return aggregate_node_metric(node_vals, metric_name)
 
 
-def global_efficiency(graph, esize):
+def global_efficiency(graph, effective_sizes: dict) -> dict:
     """
-    Produce list of efficiencies for all nodes in a network.
-
-    Notes:
-        Alternative implementations:
-            [
-                ((sz / degree) if (degree := graph.degree(node)) > 0 else 0)
-                for node, sz in esize.items()
-            ]
-
-            Note: ":=" operator available in >=Python 3.8
-
-    Args:
-        graph ():
+    Produce efficiencies for all nodes in a network.
     """
-    return {node: efficiency(graph.degree(node), sz) for node, sz in esize.items()}
+    return {
+        node: efficiency(graph.degree(node), effective_size)
+        for node, effective_size in effective_sizes.items()
+    }
 
 
 def efficiency(degree: int, effective_size: int):
     """
-    Get the efficiency between a node and one of it's neighbors.
-
-    JUNG source code found at
-    https://github.com/jrtom/jung/blob/1f579fe5d74ecbaecbe32ce6762e1fa9e17ed225/jung-algorithms/src/main/java/edu/uci/ics/jung/algorithms/metrics/StructuralHoles.java#L88-L104
-
-    NetworkX notes on efficiency found at
-    https://github.com/networkx/networkx/blob/36d446bae7059d9a6b2db742f3b75457f89db032/networkx/algorithms/structuralholes.py#L102-L106
-
-    Args:
-        graph ():
-        node ():
-        neighbor ():
-
-    Returns:
-        double
+    Get the efficiency between a node and one of its neighbors.
     """
     if degree == 0:
         return 0
@@ -407,44 +272,31 @@ def efficiency(degree: int, effective_size: int):
 
 def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
     """
-    Get metrics of interest about a social network from the network's graph.
-
-    Args:
-        graph(igraph.Graph): graph of conversation from issues in some time
-        period.
-
-    Returns:
-        dict: dict of social metrics derived from the input graph.
+    Get whole-period aggregates derived directly from the period graph.
     """
-
     return {
-        # Structural Holes of Communication
+        "edges": graph.ecount(),
+        "vertices": graph.vcount(),
+        "density": graph.density(),
+        "diameter": graph.diameter(),
         **aggregate_node_metric(graph.constraint(), "constraint"),
+        **aggregate_node_metric(graph.betweenness(), "betweenness"),
+        **aggregate_node_metric(graph.closeness(), "closeness"),
     }
 
 
-def aggregate_node_metric(node_metrics: list, metric_name: str):
+def aggregate_node_metric(node_metrics: list, metric_name: str) -> dict:
     """
-    Return aggregate values for the given metric.
-
-    Currently used for:
-        betweenness
-        closeness
-        constraint
-        effective_size
-        efficiency
-        hierarchy
-
-    Returns:
-        dict:
+    Return min, avg, max, and sum for a node-level metric list.
     """
     aggregates: dict = {}
 
+    min_key: str = metric_name + "_" + "min"
     avg_key: str = metric_name + "_" + "avg"
     max_key: str = metric_name + "_" + "max"
     sum_key: str = metric_name + "_" + "sum"
 
-    for metric_type in (avg_key, max_key, sum_key):
+    for metric_type in (min_key, avg_key, max_key, sum_key):
         aggregates[metric_type] = 0
 
     if len(node_metrics) == 0:
@@ -457,6 +309,7 @@ def aggregate_node_metric(node_metrics: list, metric_name: str):
         return aggregates
 
     for key, val in {
+        min_key: min(clean_metrics),
         sum_key: sum(clean_metrics),
         max_key: max(clean_metrics),
         avg_key: sum(clean_metrics) / num_nodes,

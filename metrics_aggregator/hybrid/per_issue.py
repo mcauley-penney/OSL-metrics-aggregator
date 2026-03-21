@@ -1,4 +1,5 @@
-"""TODO."""
+"""Hybrid per-issue metrics."""
+
 import igraph
 
 
@@ -47,31 +48,14 @@ def get_comm_network_props(data: dict) -> dict:
 def make_igraph_issue_network_matrix(cur_issue: dict, graph: igraph.Graph) -> igraph.Graph:
     """
     Create an adjacency matrix for participants in one issue conversation.
-
-    Notes:
-        This functionality requires:
-            - userid
-            - issue comments
-                - userid
-
-    Args:
-        cur_issue (dict):
-        cur_graph (igraph.Graph):
-
-    Returns:
-        igraph.Graph: graph object update with nodes and edges from the
-        conversation that transpired in the given issue parameter
     """
-    # TODO: can use sets?
     issue_nodes: list = []
     edges: list = []
 
-    # idempotently add the original poster of the issue
     cur_vertex, graph = idempotent_add(cur_issue["userid"], graph)
     issue_nodes.append(cur_vertex)
 
     for _, comment in cur_issue["comments"].items():
-        # idempotently add each commenter
         cur_vertex, graph = idempotent_add(comment["userid"], graph)
         issue_nodes.append(cur_vertex)
 
@@ -88,15 +72,7 @@ def make_igraph_issue_network_matrix(cur_issue: dict, graph: igraph.Graph) -> ig
 
 def idempotent_add(userid, graph):
     """
-    TODO: update name, finish docstring.
-
-    Args:
-        userid ():
-        graph ():
-
-    Returns:
-        vertex_obj:
-        graph:
+    Add a vertex only if it does not already exist.
     """
     try:
         vertex_obj = graph.vs.find(name=userid)
@@ -107,16 +83,9 @@ def idempotent_add(userid, graph):
     return vertex_obj, graph
 
 
-
 def get_unique_discussants(issue_dict: dict) -> list:
     """
     Create set of discussants in a dictionary of comments on an issue.
-
-    TODO:
-    :param issuecmmnt_dict:
-    :type issuecmmnt_dict: dict
-    :return:
-    :rtype:
     """
     discussant_list = get_discussants_list(issue_dict)
 
@@ -127,16 +96,15 @@ def get_unique_discussants(issue_dict: dict) -> list:
 
 def get_discussants_list(issue_dict: dict) -> list[str]:
     """
-    TODO.
-
-    :param issue_dict:
-    :type issue_dict: dict
-    :return: list of discussants in issue, including original poster
-    :rtype: list
+    Return the list of discussants in an issue, including the original poster.
     """
     id_list = [issue_dict["userid"]]
 
-    id_list += [comment["userid"] for comment in issue_dict["comments"].values() if isinstance(comment["userid"], str)]
+    id_list += [
+        comment["userid"]
+        for comment in issue_dict["comments"].values()
+        if isinstance(comment["userid"], str)
+    ]
 
     return id_list
 
@@ -144,24 +112,24 @@ def get_discussants_list(issue_dict: dict) -> list[str]:
 def get_issue_wordiness(issue_dict: dict) -> int:
     """
     Count the amount of words over a length of 2 in each comment in an issue.
-
-    :param issuecmmnt_dict: dictionary of comments for an issue
-    :type issuecmmnt_dict: dict
     """
     sum_wc = 0
 
     try:
-        sum_wc += len([word for word in issue_dict["body"].split() if len(word) > 2 and word.lower() != "nan"])
+        sum_wc += len(
+            [
+                word
+                for word in issue_dict["body"].split()
+                if len(word) > 2 and word.lower() != "nan"
+            ]
+        )
 
     except (AttributeError, KeyError):
         pass
 
     for comment in issue_dict["comments"].values():
         body = comment["body"]
-
-        # get all words greater in len than 2
         split_body = [word for word in body.split() if len(word) > 2]
-
         sum_wc += len(split_body)
 
     return sum_wc

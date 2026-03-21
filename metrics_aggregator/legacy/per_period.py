@@ -1,4 +1,4 @@
-"""Tools for gathering metrics about the communicators in a repo's issues."""
+"""Legacy period metrics about the communicators in a repo's issues."""
 
 import concurrent.futures
 import datetime
@@ -60,7 +60,6 @@ def gather_all_period_comm_metrics(issue_data: dict) -> dict:
     return dict(sorted(total_metrics.items()))
 
 
-# TODO: could be a lot smarter, I think
 def create_partitioned_issue_dict(issue_data: dict) -> dict:
     """
     Partition all input issues into a dictionary of time frames.
@@ -86,17 +85,8 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     def datetime_to_github_time_str(date: datetime.datetime) -> str:
         return datetime.datetime.strftime(date, "%m/%d/%y, %I:%M:%S %p")
 
-    def get_start_date(issue_data: dict) -> datetime.datetime:
-        """
-        TODO.
-
-        Args:
-            issue_data (dict):
-
-        Returns:
-            datetime.datetime:
-        """
-        first_item_val = list(issue_data.values())[0]
+    def get_start_date(issues: dict) -> datetime.datetime:
+        first_item_val = list(issues.values())[0]
         start_date: str = first_item_val["closed_at"].split(",")[0]
 
         return datetime.datetime.strptime(start_date, "%m/%d/%y")
@@ -126,7 +116,6 @@ def create_partitioned_issue_dict(issue_data: dict) -> dict:
     for key, val in issue_data.items():
         cur_date = github_time_str_to_datetime(val["closed_at"])
 
-        # NOTE: could use binary search if performance became an issue
         i = 0
         while cur_date > github_time_str_to_datetime(date_key_list[i]):
             i += 1
@@ -145,10 +134,6 @@ def gather_single_period_comm_metrics(
 ):
     """
     Gather all communication metrics for one temporal period.
-
-    Args:
-        period ():
-        issue_nums ():
     """
     keys: dict = {"keys": issue_nums}
 
@@ -161,7 +146,6 @@ def gather_single_period_comm_metrics(
     )
 
     igraph_metrics = get_igraph_graph_metrics(cur_bucket_graph)
-
     networkx_metrics = get_networkx_graph_metrics(cur_bucket_graph)
 
     metrics_output[period] = {
@@ -177,14 +161,7 @@ def make_igraph_period_network_matrix(
     issue_data: dict, period_issue_nums: list
 ) -> igraph.Graph:
     """
-    TODO.
-
-    Args:
-        period_num_list ():
-        issue_data (dict):
-
-    Returns:
-        igraph.Graph: graph of social network for period
+    Create a graph of the social network for a period.
     """
     cur_bucket_graph = igraph.Graph(directed=True)
 
@@ -201,33 +178,16 @@ def make_igraph_issue_network_matrix(
 ) -> igraph.Graph:
     """
     Create an adjacency matrix for participants in one issue conversation.
-
-    Notes:
-        This functionality requires:
-            - userid
-            - issue comments
-                - userid
-
-    Args:
-        cur_issue (dict):
-        cur_graph (igraph.Graph):
-
-    Returns:
-        igraph.Graph: graph object update with nodes and edges from the
-        conversation that transpired in the given issue parameter
     """
     issue_nodes: list = []
     edges: list = []
 
-    # idempotently add the original poster of the issue
     userid: str = cur_issue["userid"]
 
     cur_vertex, graph = idempotent_add(userid, graph)
     issue_nodes.append(cur_vertex)
 
     for _, comment in cur_issue["comments"].items():
-
-        # idempotently add each commenter
         userid = comment["userid"]
 
         cur_vertex, graph = idempotent_add(userid, graph)
@@ -246,15 +206,7 @@ def make_igraph_issue_network_matrix(
 
 def idempotent_add(userid, graph):
     """
-    TODO: update name, finish docstring.
-
-    Args:
-        userid ():
-        graph ():
-
-    Returns:
-        vertex_obj:
-        graph:
+    Add a vertex only if it does not already exist.
     """
     try:
         vertex_obj = graph.vs.find(name=userid)
@@ -268,9 +220,6 @@ def idempotent_add(userid, graph):
 def get_networkx_graph_metrics(ig_graph: igraph.Graph):
     """
     Get NetworkX-specific metrics from an iGraph graph.
-
-    Args:
-        graph (igraph.Graph): igraph graph to convert to NetworkX
     """
     nx_graph = ig_graph.to_networkx()
 
@@ -287,14 +236,7 @@ def get_networkx_graph_metrics(ig_graph: igraph.Graph):
 
 def calc_aggregates_from_dict(node_data: dict, metric_name: str):
     """
-    TODO.
-
-    Args:
-        node_data (dict):
-
-    Returns:
-        dict: aggregate values for list of node values
-
+    Return aggregate values for list of node values.
     """
     node_vals: list = list(node_data.values())
 
@@ -304,23 +246,6 @@ def calc_aggregates_from_dict(node_data: dict, metric_name: str):
 def global_efficiency(graph, esize):
     """
     Produce list of efficiencies for all nodes in a network.
-
-    Notes:
-        Implementations:
-            1. [
-                ((sz / degree) if (degree := graph.degree(node)) > 0 else 0)
-                for node, sz in esize.items()
-            ]
-
-            2. [
-                efficiency(graph.degree(node), sz) for node, sz in
-                esize.items()
-            ]
-
-        ":=" operator available in >=Python 3.8
-
-    Args:
-        graph ():
     """
     return {
         node: efficiency(graph.degree(node), sz) for node, sz in esize.items()
@@ -329,21 +254,7 @@ def global_efficiency(graph, esize):
 
 def efficiency(degree: int, effective_size: int):
     """
-    Get the efficiency between a node and one of it's neighbors.
-
-    JUNG source code found at
-    https://github.com/jrtom/jung/blob/1f579fe5d74ecbaecbe32ce6762e1fa9e17ed225/jung-algorithms/src/main/java/edu/uci/ics/jung/algorithms/metrics/StructuralHoles.java#L88-L104
-
-    NetworkX notes on efficiency found at
-    https://github.com/networkx/networkx/blob/36d446bae7059d9a6b2db742f3b75457f89db032/networkx/algorithms/structuralholes.py#L102-L106
-
-    Args:
-        graph ():
-        node ():
-        neighbor ():
-
-    Returns:
-        double
+    Get the efficiency between a node and one of its neighbors.
     """
     if degree == 0:
         return 0
@@ -354,15 +265,7 @@ def efficiency(degree: int, effective_size: int):
 def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
     """
     Get metrics of interest about a social network from the network's graph.
-
-    Args:
-        graph(igraph.Graph): graph of conversation from issues in some time
-        period.
-
-    Returns:
-        dict: dict of social metrics derived from the input graph.
     """
-    # TODO: can give weights to calculations to improve accuracy?
     return {
         "edges": graph.ecount(),
         "vertices": graph.vcount(),
@@ -377,17 +280,6 @@ def get_igraph_graph_metrics(graph: igraph.Graph) -> dict:
 def aggregate_node_metric(node_metrics: list, metric_name: str):
     """
     Return aggregate values for the given metric.
-
-    Currently used for:
-        betweenness
-        closeness
-        constraint
-        effective_size
-        efficiency
-        hierarchy
-
-    Returns:
-        dict:
     """
     aggregates: dict = {}
 
